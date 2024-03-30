@@ -13,7 +13,13 @@ package frc.robot;
  * constants are needed, to reduce verbosity.
  */
 public final class Constants {
-  public static class OperatorConstants {
-    public static final int kDriverControllerPort = 0;
+  public static class DriverConstants {
+    public static double driveDeadBandPercent = 0.15;
+    public static double steerDeadBandPercent = 0.3;
+  }
+
+  public static class Drivetrain {
+    public static double maxSpeedMetersPerSecond = 5.08;
+    public static double maxSpeedRadPerSecond = Math.PI;
   }
 }

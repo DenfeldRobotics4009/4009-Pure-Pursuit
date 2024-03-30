@@ -7,13 +7,14 @@ package frc.library.auto.pathing.pathObjects;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.PrintCommand;
-import frc.library.auto.pathing.PathingConstants;
-import frc.library.auto.util.Field;
+import frc.library.auto.pathing.PurePursuitController;
 
 public class Path {
 
@@ -28,7 +29,7 @@ public class Path {
      * initializer is the first point along the path.
      */
     public Path(PathPoint... Points) {
-        this(PathingConstants.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+        this(PurePursuitController.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
     }
 
     /**
@@ -54,46 +55,24 @@ public class Path {
 
         System.out.println("Processing path " + this.toString());
 
-        // Flip all points to the corresponding side
-        if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red) {
-            System.out.println("Flipping point coordinates to red alliance");
-            for (PathPoint pathPoint : Points) {
-                Pose2d flippedPoint = Field.mirrorPoint(new Pose2d(pathPoint.posMeters, pathPoint.orientation));
-                pathPoint.posMeters = flippedPoint.getTranslation();
-                pathPoint.orientation = flippedPoint.getRotation();
-            }
-        } else {
-            System.out.println("Assuming blue alliance");
-        }
+        // // Flip all points to the corresponding side
+        // if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red) {
+        //     System.out.println("Flipping point coordinates to red alliance");
+        //     for (PathPoint pathPoint : Points) {
+        //         Pose2d flippedPoint = Field.mirrorPoint(new Pose2d(pathPoint.posMeters, pathPoint.orientation));
+        //         pathPoint.posMeters = flippedPoint.getTranslation();
+        //         pathPoint.orientation = flippedPoint.getRotation();
+        //     }
+        // } else {
+        //     System.out.println("Assuming blue alliance");
+        // }
 
         this.lastPointTolerance = lastPointTolerance;
         points = Points;
 
-        PathPoint firstPoint = points.get(0);
-
-        // Process point data
-        // Correct or implement orientation for each point.
-        // Handle first point
-        if (firstPoint.orientation == null) {
-            // Default as 0, if the robot is not at 0 when 
-            // the path begins, it will turn.
-            firstPoint.orientation = new Rotation2d();
-        }
-
-        // Define others rotation
-        for (int i = 1; i < points.size(); i++) {
-            PathPoint point = points.get(i);
-            PathPoint lastPoint = points.get(i-1);
-            // If no orientation was initialized
-            if (point.orientation == null) {
-                // Set to last
-                point.orientation = lastPoint.orientation;
-            }
-        }
-
         // Increment rotation of each point by the forward direction angle
         for (PathPoint pathPoint : Points) {
-            pathPoint.orientation = pathPoint.orientation.plus(PathingConstants.forwardAngle);
+            pathPoint.orientation = pathPoint.orientation.plus(PurePursuitController.forwardAngle);
         }
 
         // Parse through a copy, as the original is being edited
@@ -108,24 +87,34 @@ public class Path {
             double deltaD = point.getDistance(previousPoint);
             // in this case, acceleration is negative, deceleration is positive
             double deceleration = -(deltaS / deltaD);
+
+            // Calculate lookahead for deceleration point offset
+            double lookAheadMeters = PurePursuitController.calculateLookAhead(
+                previousPoint.speedMetersPerSecond
+            );
+
             // Pull max deceleration from constants
-            if (deceleration > PathingConstants.maxAccelerationMeters) {
+            if (deceleration > PurePursuitController.maxAccelerationMeters) {
 
                 // Clamp speed
                 double previousSpeed = previousPoint.speedMetersPerSecond;
                 // This index will remain unaffected
                 Points.get(i-1).speedMetersPerSecond = 
-                    point.speedMetersPerSecond + deltaD*PathingConstants.maxAccelerationMeters;
+                    point.speedMetersPerSecond + deltaD*PurePursuitController.maxAccelerationMeters;
                 System.out.println(
                     "Clamped speed from " + previousSpeed + " to " + 
                     previousPoint.speedMetersPerSecond
                 );
 
-            } else if (deceleration < PathingConstants.maxAccelerationMeters && deltaS < 0) {
+            } else if (
+                deceleration < PurePursuitController.maxAccelerationMeters && 
+                deltaS < 0 && 
+                1 + (deltaS / (PurePursuitController.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD) > 0
+            ) {
 
                 // Insert new point
                 // Normalized, deltaS / Swerve.MaxAccelerationMeters is negative
-                double percentFromLastPoint =  1 + (deltaS / (PathingConstants.maxAccelerationMeters * deltaD));
+                double percentFromLastPoint =  1 + (deltaS / (PurePursuitController.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD);
                 System.out.println(
                     "Inserted new point at index " + i + " at " + percentFromLastPoint*100 + "%");
                 // Interpolate between, and set speed to last speed

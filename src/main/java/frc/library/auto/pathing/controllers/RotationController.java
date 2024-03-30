@@ -4,6 +4,7 @@
 
 package frc.library.auto.pathing.controllers;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 
 /**
@@ -16,6 +17,6 @@ public interface RotationController {
      * @return Rotation2d representing rotational speeds to apply to the 
      * drive train.
      */
-    public Rotation2d getRotationSpeeds();
+    public Rotation2d getRotationSpeeds(Pose2d robotPosition);
 
 }

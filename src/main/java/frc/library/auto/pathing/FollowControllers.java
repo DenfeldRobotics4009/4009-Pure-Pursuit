@@ -18,7 +18,7 @@ import frc.library.auto.pathing.controllers.TranslationController;
  * Drives the robot from one or two given commands that may
  * supply a rotational and translational speed.
  */
-public class DriveWithSource extends Command {
+public class FollowControllers extends Command {
 
   DriveSubsystem driveSubsystem;
 
@@ -40,7 +40,7 @@ public class DriveWithSource extends Command {
    * when one controller ends, this command will end. If false, this
    * command will not end until both commands are finished. 
    */
-  public DriveWithSource(
+  public FollowControllers(
     TranslationController translationController, 
     RotationController rotationController,
     boolean race,
@@ -72,7 +72,7 @@ public class DriveWithSource extends Command {
    * @param driveSubsystem
    */
   public <PoseController extends TranslationController & RotationController> 
-    DriveWithSource(PoseController poseController, DriveSubsystem driveSubsystem) 
+    FollowControllers(PoseController poseController, DriveSubsystem driveSubsystem) 
   {
     this.driveSubsystem = driveSubsystem;
     this.translationController = poseController;
@@ -105,7 +105,10 @@ public class DriveWithSource extends Command {
     for (Command command : commands) {
       command.execute();
     }
-    Pose2d poseSpeeds = new Pose2d(translationController.getTranslationSpeeds(), rotationController.getRotationSpeeds());
+    Pose2d poseSpeeds = new Pose2d(
+      translationController.getTranslationSpeeds(driveSubsystem.getPosition()), 
+      rotationController.getRotationSpeeds(driveSubsystem.getPosition())
+    );
 
     driveSubsystem.drive(
       new ChassisSpeeds(poseSpeeds.getX(), poseSpeeds.getY(), poseSpeeds.getRotation().getRadians())

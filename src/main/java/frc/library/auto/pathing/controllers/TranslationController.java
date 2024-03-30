@@ -4,6 +4,7 @@
 
 package frc.library.auto.pathing.controllers;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 
 /**
@@ -17,6 +18,6 @@ public interface TranslationController {
      * These speeds will not be converted to field oriented after being
      * returned.
      */
-    public Translation2d getTranslationSpeeds();
+    public Translation2d getTranslationSpeeds(Pose2d robotPosition);
 
 }

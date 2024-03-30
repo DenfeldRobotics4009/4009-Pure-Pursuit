@@ -69,15 +69,59 @@ public class PathPoint {
     }
 
     /**
+     * Returns the coordinates of the intersection along pointA to pointB from the source point,
+     * with a line extended from the source with a slope of slopeFromSource
+     * @param pointA
+     * @param pointB
+     * @param source
+     * @param slopeFromSource
+     * @return
+     */
+    public static Translation2d findIntersection(Translation2d pointA, Translation2d pointB, Translation2d source, double slopeFromSource) {
+        double deltaX = pointB.getX() - pointA.getX();
+        double deltaY = pointB.getY() - pointA.getY();
+
+        // Check if the comparison line is vertical
+        if (deltaX == 0) {
+            return clamp( 
+                pointA,
+                pointB,
+                new Translation2d(
+                    pointA.getX(), 
+                    slopeFromSource*(pointA.getX() - source.getX()) + source.getY()
+                )
+            );
+        }
+
+        double comparisonLineSlope = deltaY / deltaX;
+
+        // If this is true, there is no intersection
+        if (slopeFromSource == comparisonLineSlope) {
+            return null;
+        }
+
+        double xIntercept = ((slopeFromSource * source.getX()) - (comparisonLineSlope * pointA.getX()) - source.getY() + pointA.getY()
+            ) / (slopeFromSource - comparisonLineSlope);
+        
+        return clamp( 
+            pointA,
+            pointB,
+            new Translation2d(
+                xIntercept,
+                slopeFromSource*(xIntercept - source.getX()) + source.getY()
+            )
+        );
+    }
+    /**
      * Returns the coordinates of the intersection between this line,
      * and a perpendicular line that coincides with point Source.
-     * @param Source Line to attach perpendicular line to
+     * @param source Line to attach perpendicular line to
      * @return Coordinates of intersection between lines
      */
-    public static Translation2d findPerpendicularIntersection(Translation2d PointA, Translation2d PointB, Translation2d Source) {
+    public static Translation2d findPerpendicularIntersection(Translation2d pointA, Translation2d pointB, Translation2d source) {
 
-        double deltaX = PointB.getX() - PointA.getX();
-        double deltaY = PointB.getY() - PointA.getY();
+        double deltaX = pointB.getX() - pointA.getX();
+        double deltaY = pointB.getY() - pointA.getY();
 
         Translation2d intersection;
 
@@ -87,14 +131,14 @@ public class PathPoint {
             //PathFollower.println("Calculating perpendicular intersection from horizontal line");
 
             intersection = new Translation2d(
-                nonSpecifiedClamp(PointA.getX(), PointB.getX(), Source.getX()), PointA.getY()
+                source.getX(), pointA.getY()
             );
 
         } else if (deltaX == 0) {
             //PathFollower.println("Calculating perpendicular intersection from vertical line");
 
             intersection = new Translation2d(
-                PointA.getX(), nonSpecifiedClamp(PointA.getY(), PointB.getY(), Source.getY())
+                pointA.getX(), source.getY()
             );
 
         } else {
@@ -104,20 +148,20 @@ public class PathPoint {
             double Slope = deltaY / deltaX;
 
             double xIntercept = (
-                    (Source.getX() / (Slope*Slope)) 
-                    + (Source.getY() / (Slope)) 
-                    - (PointA.getY() / (Slope))
-                    + (PointA.getX())
+                    (source.getX() / (Slope*Slope)) 
+                    + (source.getY() / (Slope)) 
+                    - (pointA.getY() / (Slope))
+                    + (pointA.getX())
                 ) / (1 + 1/(Slope*Slope));
 
             intersection = new Translation2d(
                 xIntercept, 
-                Slope*(xIntercept-PointA.getX()) + PointA.getY()
+                Slope*(xIntercept-pointA.getX()) + pointA.getY()
             );
         }
         
         //PathFollower.println("Found perpendicular intersection at " + intersection);
-        return intersection;
+        return clamp(pointA, pointB, intersection);
     }
 
     public double getDistance(PathPoint Point) {
