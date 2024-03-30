@@ -13,7 +13,6 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.DoubleTopic;
 import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -40,6 +39,7 @@ public class PurePursuitController extends Command implements RotationController
         IntegerPublisher lastCrossedPointIndex;
 
         DoublePublisher distanceToGoal;
+        DoublePublisher percentAlongLine;
         DoublePublisher lookAhead;
 
         public PurePursuitDiagnostics() {
@@ -56,6 +56,7 @@ public class PurePursuitController extends Command implements RotationController
             lastCrossedPointIndex = purePursuitTable.getIntegerTopic("lastCrossedPointIndex").getEntry(0);
 
             distanceToGoal = purePursuitTable.getDoubleTopic("distanceToGoal").getEntry(0);
+            percentAlongLine = purePursuitTable.getDoubleTopic("percentAlongLine").getEntry(0);
             lookAhead = purePursuitTable.getDoubleTopic("lookAhead").getEntry(0);
         }
 
@@ -64,6 +65,7 @@ public class PurePursuitController extends Command implements RotationController
             Pose2d currentPosition, 
             double speed, 
             int lastCrossedPointIndex,
+            double percentAlongLine,
             double lookAhead
         ) {
             goalX.set(goalPosition.getX());
@@ -78,6 +80,7 @@ public class PurePursuitController extends Command implements RotationController
             this.lastCrossedPointIndex.set(lastCrossedPointIndex);
 
             distanceToGoal.set(goalPosition.getTranslation().getDistance(currentPosition.getTranslation()));
+            this.percentAlongLine.set(percentAlongLine);
             this.lookAhead.set(lookAhead);
         }
     }
@@ -107,6 +110,8 @@ public class PurePursuitController extends Command implements RotationController
     public static double turningP = 5, turningI = 0, turningD = 0;
 
     PurePursuitDiagnostics diagnostics = new PurePursuitDiagnostics();
+
+    double lastDistanceToGoal = lookAheadMeters;
 
     /**
      * Follows a given path
@@ -256,18 +261,14 @@ public class PurePursuitController extends Command implements RotationController
         // The target relative to the robots current position
         lastPosition = robotPosition;
         Translation2d deltaLocation = state.goalPose.getTranslation().minus(robotPosition.getTranslation());
-        // Clamp state speed so the end of the path can be consistently reached
-        // Clamped between [Const Max, 5 cm/s]
-        double clampedSpeed = clampStateSpeed(state.speedMetersPerSecond);
 
         // Scale to goal speed. Speed input is in meters per second, while drive accepts normal values.
-        Translation2d axisSpeeds = new Translation2d(clampedSpeed, deltaLocation.getAngle());
+        Translation2d axisSpeeds = new Translation2d(state.speedMetersPerSecond, deltaLocation.getAngle());
 
         // Set lookahead based upon speed of next point
         lookAheadMeters = calculateLookAhead(state.speedMetersPerSecond);
 
-        // Update diagnostic data
-        diagnostics.publishEntry(state.goalPose, robotPosition, clampedSpeed, lastCrossedPointIndex, lookAheadMeters);
+        lastDistanceToGoal = state.goalPose.getTranslation().getDistance(robotPosition.getTranslation());
 
         // Construct chassis speeds from state values
         // Convert field oriented to robot oriented
@@ -287,44 +288,11 @@ public class PurePursuitController extends Command implements RotationController
         );
     }
 
-    /**
-     * @param robotPosition current pose of the robot
-     * @return PathState containing a goal position, rotation
-     * and allowed speed to travel there.
-     */
-    PathState getPathState(Pose2d robotPosition) {
-        //println("Observing line " + lastCrossedPointIndex + " to " + (lastCrossedPointIndex + 1));
-        Translation2d robotTranslation = robotPosition.getTranslation();
-
-        // Store 2 points
-        ArrayList<PathPoint> relevantPoints = packageRelevantPoints();
-
-        // Assume at least 2 are grabbed
-        double lengthAB = relevantPoints.get(0).getDistance(relevantPoints.get(1));
-        // println("Length of current line = " + lengthAB);
-
-        // grab perpendicular intersection
-        Translation2d perpendicularIntersectionAB = PathPoint.findPerpendicularIntersection(
-            relevantPoints.get(0).posMeters, relevantPoints.get(1).posMeters, robotTranslation
-        );
-
-        // Calculate position along line AB via finding difference between line length, and distance to B
-        double distanceMetersAlongAB = lengthAB - relevantPoints.get(1).posMeters.getDistance(perpendicularIntersectionAB);
-
-        // Clamp distance along AB
-        if (distanceMetersAlongAB < 0) {
-            distanceMetersAlongAB = 0;
-        }
-
-        // System.out.println("Distance along AB: " + distanceMetersAlongAB);
-
-        // Calculate look ahead distance from ab, if its over the length, look to BC
-        double lookAheadDistanceMetersAlongPoints = distanceMetersAlongAB + lookAheadMeters;
-
+    Translation2d calculateLookAheadGoal(double distanceAlongCurrentLine) {
         Translation2d gotoGoal;
 
         int pointsLookingAhead = 0;
-        double distanceAlongLookaheadPoints = lookAheadDistanceMetersAlongPoints;
+        double distanceAlongLookaheadPoints = distanceAlongCurrentLine + lookAheadMeters;
 
         // Parse lookahead
         while (true) {
@@ -360,6 +328,83 @@ public class PurePursuitController extends Command implements RotationController
             // Continue
         }
 
+        return gotoGoal;
+    }
+
+    /**
+     * @param robotPosition current pose of the robot
+     * @return PathState containing a goal position, rotation
+     * and allowed speed to travel there.
+     */
+    PathState getPathState(Pose2d robotPosition) {
+        Translation2d robotTranslation = robotPosition.getTranslation();
+
+        // Store 2 points
+        ArrayList<PathPoint> relevantPoints = packageRelevantPoints();
+
+        // Assume at least 2 are grabbed
+        double lengthAB = relevantPoints.get(0).getDistance(relevantPoints.get(1));
+        // println("Length of current line = " + lengthAB);
+
+        // grab perpendicular intersection
+        Translation2d perpendicularIntersectionAB = PathPoint.findPerpendicularIntersection(
+            relevantPoints.get(0).posMeters, relevantPoints.get(1).posMeters, robotTranslation
+        );
+
+        // Calculate position along line AB via finding difference between line length, and distance to B
+        double distanceMetersAlongAB = lengthAB - relevantPoints.get(1).posMeters.getDistance(perpendicularIntersectionAB);
+
+        // Add the distance of the robot from the path to the distance along AB for smoothing
+        //distanceMetersAlongAB += robotTranslation.getDistance(perpendicularIntersectionAB);
+
+        // Clamp distance along AB
+        distanceMetersAlongAB = MathUtil.clamp(distanceMetersAlongAB, 0, lengthAB);
+
+        // System.out.println("Distance along AB: " + distanceMetersAlongAB);
+
+        Translation2d gotoGoal = calculateLookAheadGoal(distanceMetersAlongAB);
+
+        int pointsLookingAhead = 0;
+        double distanceAlongLookaheadPoints = distanceMetersAlongAB + lookAheadMeters;// + lookAheadMeters*robotTranslation.getDistance(perpendicularIntersectionAB);
+
+        // Parse lookahead
+        while (true) {
+            // Check to make sure points are accessible
+            if (lastCrossedPointIndex + pointsLookingAhead + 1 >= path.points.size()) {
+                // We are looking to the end of path
+                gotoGoal = path.points.get(path.points.size()-1).posMeters;
+                //println(gotoGoal);
+                break;
+            }
+            
+            // Grab 2 points, and grab the length between them
+            PathPoint lookAheadPointA = path.points.get(lastCrossedPointIndex + pointsLookingAhead);
+            PathPoint lookAheadPointB = path.points.get(lastCrossedPointIndex + pointsLookingAhead + 1);
+
+            double lookAheadLineLength = lookAheadPointA.getDistance(lookAheadPointB);
+
+            // If we are not looking past this line
+            if (distanceAlongLookaheadPoints < lookAheadLineLength) {
+                // Stop looping, interpolate goto
+                gotoGoal = lookAheadPointA.posMeters.interpolate(
+                    lookAheadPointB.posMeters, 
+                    distanceAlongLookaheadPoints / lookAheadLineLength // Normalized
+                );
+
+                //println(gotoGoal);
+                break;
+            }
+
+            distanceAlongLookaheadPoints -= lookAheadLineLength;
+            // Look 1 line ahead, and subtract length of last line
+            pointsLookingAhead ++;
+            // Continue
+        }
+
+        // After finding the gotoGoal, calculate a second round of intersections perpendicular
+        // to the slope formed from perpendicularIntersectionAB and gotoGoal
+        
+
         //println("Constructing path state");
         double percentAlongAB = distanceMetersAlongAB / lengthAB;
 
@@ -380,13 +425,16 @@ public class PurePursuitController extends Command implements RotationController
         }
 
         // Construct state
-        PathState state = new PathState(gotoGoal, interpolatedRotation, stateSpeed);
+        PathState state = new PathState(gotoGoal, interpolatedRotation, clampStateSpeed(stateSpeed));
 
         // Check to increment index
         if (compareWithNextLine(robotTranslation)) {
             lastCrossedPointIndex ++;
             System.out.println("Increment last crossed point index to " + lastCrossedPointIndex);
         }
+
+        // Update diagnostic data
+        diagnostics.publishEntry(state.goalPose, robotPosition, state.speedMetersPerSecond, lastCrossedPointIndex, percentAlongAB, lookAheadMeters);
 
         return state;
     }

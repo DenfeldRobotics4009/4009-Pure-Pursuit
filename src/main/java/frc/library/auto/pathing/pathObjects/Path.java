@@ -109,12 +109,18 @@ public class Path {
             } else if (
                 deceleration < PurePursuitController.maxAccelerationMeters && 
                 deltaS < 0 && 
-                1 + (deltaS / (PurePursuitController.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD) > 0
+                (
+                    1 + (deltaS / (PurePursuitController.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD) > 0
+                    || i == pointsCopy.size()-1 // Ignore the above if we are checking the last point
+                )
             ) {
 
                 // Insert new point
                 // Normalized, deltaS / Swerve.MaxAccelerationMeters is negative
-                double percentFromLastPoint =  1 + (deltaS / (PurePursuitController.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD);
+                double percentFromLastPoint =  1 + (deltaS / (PurePursuitController.maxAccelerationMeters * deltaD));
+                if (i != pointsCopy.size()-1) {
+                    percentFromLastPoint -= lookAheadMeters/deltaD;
+                }
                 System.out.println(
                     "Inserted new point at index " + i + " at " + percentFromLastPoint*100 + "%");
                 // Interpolate between, and set speed to last speed

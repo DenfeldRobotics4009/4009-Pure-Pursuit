@@ -67,51 +67,7 @@ public class PathPoint {
     ) {
         return (Final - Initial) / Distance;
     }
-
-    /**
-     * Returns the coordinates of the intersection along pointA to pointB from the source point,
-     * with a line extended from the source with a slope of slopeFromSource
-     * @param pointA
-     * @param pointB
-     * @param source
-     * @param slopeFromSource
-     * @return
-     */
-    public static Translation2d findIntersection(Translation2d pointA, Translation2d pointB, Translation2d source, double slopeFromSource) {
-        double deltaX = pointB.getX() - pointA.getX();
-        double deltaY = pointB.getY() - pointA.getY();
-
-        // Check if the comparison line is vertical
-        if (deltaX == 0) {
-            return clamp( 
-                pointA,
-                pointB,
-                new Translation2d(
-                    pointA.getX(), 
-                    slopeFromSource*(pointA.getX() - source.getX()) + source.getY()
-                )
-            );
-        }
-
-        double comparisonLineSlope = deltaY / deltaX;
-
-        // If this is true, there is no intersection
-        if (slopeFromSource == comparisonLineSlope) {
-            return null;
-        }
-
-        double xIntercept = ((slopeFromSource * source.getX()) - (comparisonLineSlope * pointA.getX()) - source.getY() + pointA.getY()
-            ) / (slopeFromSource - comparisonLineSlope);
-        
-        return clamp( 
-            pointA,
-            pointB,
-            new Translation2d(
-                xIntercept,
-                slopeFromSource*(xIntercept - source.getX()) + source.getY()
-            )
-        );
-    }
+    
     /**
      * Returns the coordinates of the intersection between this line,
      * and a perpendicular line that coincides with point Source.

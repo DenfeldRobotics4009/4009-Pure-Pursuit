@@ -172,7 +172,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 205,
+          "height": 293,
           "series": [
             {
               "color": [
@@ -181,19 +181,18 @@
                 0.6901960968971252,
                 1.0
               ],
-              "id": "NT:/PurePursuit/currentTheta"
+              "id": "NT:/PurePursuit/stateSpeed"
             },
             {
               "color": [
-                0.8666667342185974,
-                0.5176470875740051,
-                0.32156863808631897,
+                0.3333333432674408,
+                0.658823549747467,
+                0.4078431725502014,
                 1.0
               ],
-              "id": "NT:/PurePursuit/goalTheta"
+              "id": "NT:/PurePursuit/lastCrossedPointIndex"
             }
-          ],
-          "viewTime": 30.0
+          ]
         },
         {
           "backgroundColor": [
@@ -202,7 +201,63 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 205,
+          "height": 293,
+          "series": [
+            {
+              "color": [
+                0.2980392277240753,
+                0.44705885648727417,
+                0.6901960968971252,
+                1.0
+              ],
+              "id": "NT:/PurePursuit/percentAlongLine"
+            }
+          ]
+        },
+        {
+          "backgroundColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.8500000238418579
+          ],
+          "height": 293,
+          "series": [
+            {
+              "color": [
+                0.2980392277240753,
+                0.44705885648727417,
+                0.6901960968971252,
+                1.0
+              ],
+              "id": "NT:/PurePursuit/distanceToGoal"
+            },
+            {
+              "color": [
+                0.8666667342185974,
+                0.5176470875740051,
+                0.32156863808631897,
+                1.0
+              ],
+              "id": "NT:/PurePursuit/lookAhead"
+            }
+          ]
+        }
+      ],
+      "window": {
+        "name": "Data"
+      }
+    },
+    "Plot <2>": {
+      "plots": [
+        {
+          "backgroundColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.8500000238418579
+          ],
+          "height": 293,
           "series": [
             {
               "color": [
@@ -222,8 +277,7 @@
               ],
               "id": "NT:/PurePursuit/goalX"
             }
-          ],
-          "viewTime": 30.0
+          ]
         },
         {
           "backgroundColor": [
@@ -232,7 +286,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 205,
+          "height": 293,
           "series": [
             {
               "color": [
@@ -252,8 +306,7 @@
               ],
               "id": "NT:/PurePursuit/goalY"
             }
-          ],
-          "viewTime": 30.0
+          ]
         },
         {
           "backgroundColor": [
@@ -262,7 +315,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 205,
+          "height": 293,
           "series": [
             {
               "color": [
@@ -271,7 +324,7 @@
                 0.6901960968971252,
                 1.0
               ],
-              "id": "NT:/PurePursuit/stateSpeed"
+              "id": "NT:/PurePursuit/currentTheta"
             },
             {
               "color": [
@@ -280,32 +333,13 @@
                 0.32156863808631897,
                 1.0
               ],
-              "id": "NT:/PurePursuit/lookAhead"
-            },
-            {
-              "color": [
-                0.3333333432674408,
-                0.658823549747467,
-                0.4078431725502014,
-                1.0
-              ],
-              "id": "NT:/PurePursuit/lastCrossedPointIndex"
-            },
-            {
-              "color": [
-                0.7686275243759155,
-                0.30588236451148987,
-                0.32156863808631897,
-                1.0
-              ],
-              "id": "NT:/PurePursuit/distanceToGoal"
+              "id": "NT:/PurePursuit/goalTheta"
             }
-          ],
-          "viewTime": 30.0
+          ]
         }
       ],
       "window": {
-        "name": "Pure Pursuit"
+        "name": "Position"
       }
     }
   }

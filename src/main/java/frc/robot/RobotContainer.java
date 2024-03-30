@@ -36,7 +36,6 @@ public class RobotContainer {
     drivetrain.setDefaultCommand(new Drive(drivetrain));
 
     PurePursuitController.setLookAheadScalar(1);
-    PurePursuitController.setMaxVelocityMeters(5.08);
   }
 
   /**
@@ -63,36 +62,30 @@ public class RobotContainer {
       new SequentialCommandGroup(
         new FollowControllers(
           new PurePursuitController(
-            0.1,
             new PathPoint(
               new Translation2d(1, 1),
-              Rotation2d.fromDegrees(0),
-              1
+              new Rotation2d(),
+              4
             ),
             new PathPoint(
-              new Translation2d(2, 5),
-              Rotation2d.fromDegrees(0),
-              2
-            ),
-            new PathPoint(
-              new Translation2d(3, 1),
-              Rotation2d.fromDegrees(0),
-              3
-            ),
-            new PathPoint(
-              new Translation2d(4, 5),
-              Rotation2d.fromDegrees(0),
+              new Translation2d(3, 2),
+              new Rotation2d(),
               4
             ),
             new PathPoint(
               new Translation2d(5, 1),
-              Rotation2d.fromDegrees(0),
+              new Rotation2d(),
               5
             ),
             new PathPoint(
-              new Translation2d(6, 5),
-              Rotation2d.fromDegrees(0),
-              5
+              new Translation2d(8, 2),
+              Rotation2d.fromDegrees(180),
+              4
+            ),
+            new PathPoint(
+              new Translation2d(10, 1),
+              Rotation2d.fromDegrees(180),
+              0
             )
           ), 
           drivetrain
@@ -100,35 +93,29 @@ public class RobotContainer {
 
         new FollowControllers(
           new PurePursuitController(
-            0.1,
             new PathPoint(
-              new Translation2d(6, 5),
-              Rotation2d.fromDegrees(0),
-              5
-            ),
-            new PathPoint(
-              new Translation2d(5, 1),
+              new Translation2d(10, 1),
               Rotation2d.fromDegrees(180),
               4
             ),
             new PathPoint(
-              new Translation2d(4, 5),
-              Rotation2d.fromDegrees(360),
-              3
-            ),
-            new PathPoint(
-              new Translation2d(3, 1),
-              Rotation2d.fromDegrees(0),
-              2
-            ),
-            new PathPoint(
-              new Translation2d(2, 5),
+              new Translation2d(8, 2),
               Rotation2d.fromDegrees(180),
-              1
+              4
+            ),
+            new PathPoint(
+              new Translation2d(5, 1),
+              new Rotation2d(),
+              5
+            ),
+            new PathPoint(
+              new Translation2d(3, 2),
+              new Rotation2d(),
+              4
             ),
             new PathPoint(
               new Translation2d(1, 1),
-              Rotation2d.fromDegrees(360),
+              new Rotation2d(),
               0
             )
           ), 
