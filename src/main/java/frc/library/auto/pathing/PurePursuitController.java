@@ -210,7 +210,7 @@ public class PurePursuitController extends Command implements RotationController
         lastCrossedPointIndex = 0;
         lookAheadMeters = 0.4;
         System.out.println("--- Following path of points: ---");
-        for (PathPoint point : path.points) {System.out.println(point.posMeters + "," + point.orientation);}
+        for (PathPoint point : path.points) {System.out.println(point.getTranslation() + "," + point.getRotation());}
         System.out.println("--- --- --- -- --- -- --- --- ---");
     }
 
@@ -238,7 +238,7 @@ public class PurePursuitController extends Command implements RotationController
     public boolean isFinished() {
 
         // calculate distance to last point
-        double distanceToLastPointMeters = getLastPoint().posMeters.getDistance(lastPosition.getTranslation());
+        double distanceToLastPointMeters = getLastPoint().getDistance(lastPosition);
 
         return (
             // If we have passed the second to last point
@@ -299,7 +299,7 @@ public class PurePursuitController extends Command implements RotationController
             // Check to make sure points are accessible
             if (lastCrossedPointIndex + pointsLookingAhead + 1 >= path.points.size()) {
                 // We are looking to the end of path
-                gotoGoal = path.points.get(path.points.size()-1).posMeters;
+                gotoGoal = path.points.get(path.points.size()-1).getTranslation();
                 //println(gotoGoal);
                 break;
             }
@@ -313,8 +313,8 @@ public class PurePursuitController extends Command implements RotationController
             // If we are not looking past this line
             if (distanceAlongLookaheadPoints < lookAheadLineLength) {
                 // Stop looping, interpolate goto
-                gotoGoal = lookAheadPointA.posMeters.interpolate(
-                    lookAheadPointB.posMeters, 
+                gotoGoal = lookAheadPointA.getTranslation().interpolate(
+                    lookAheadPointB.getTranslation(), 
                     distanceAlongLookaheadPoints / lookAheadLineLength // Normalized
                 );
 
@@ -348,11 +348,11 @@ public class PurePursuitController extends Command implements RotationController
 
         // grab perpendicular intersection
         Translation2d perpendicularIntersectionAB = PathPoint.findPerpendicularIntersection(
-            relevantPoints.get(0).posMeters, relevantPoints.get(1).posMeters, robotTranslation
+            relevantPoints.get(0).getTranslation(), relevantPoints.get(1).getTranslation(), robotTranslation
         );
 
         // Calculate position along line AB via finding difference between line length, and distance to B
-        double distanceMetersAlongAB = lengthAB - relevantPoints.get(1).posMeters.getDistance(perpendicularIntersectionAB);
+        double distanceMetersAlongAB = lengthAB - relevantPoints.get(1).getTranslation().getDistance(perpendicularIntersectionAB);
 
         // Add the distance of the robot from the path to the distance along AB for smoothing
         //distanceMetersAlongAB += robotTranslation.getDistance(perpendicularIntersectionAB);
@@ -372,7 +372,7 @@ public class PurePursuitController extends Command implements RotationController
             // Check to make sure points are accessible
             if (lastCrossedPointIndex + pointsLookingAhead + 1 >= path.points.size()) {
                 // We are looking to the end of path
-                gotoGoal = path.points.get(path.points.size()-1).posMeters;
+                gotoGoal = path.points.get(path.points.size()-1).getTranslation();
                 //println(gotoGoal);
                 break;
             }
@@ -386,8 +386,8 @@ public class PurePursuitController extends Command implements RotationController
             // If we are not looking past this line
             if (distanceAlongLookaheadPoints < lookAheadLineLength) {
                 // Stop looping, interpolate goto
-                gotoGoal = lookAheadPointA.posMeters.interpolate(
-                    lookAheadPointB.posMeters, 
+                gotoGoal = lookAheadPointA.getTranslation().interpolate(
+                    lookAheadPointB.getTranslation(), 
                     distanceAlongLookaheadPoints / lookAheadLineLength // Normalized
                 );
 
@@ -408,8 +408,8 @@ public class PurePursuitController extends Command implements RotationController
         //println("Constructing path state");
         double percentAlongAB = distanceMetersAlongAB / lengthAB;
 
-        Rotation2d interpolatedRotation = relevantPoints.get(0).orientation.interpolate(
-            relevantPoints.get(1).orientation, percentAlongAB);
+        Rotation2d interpolatedRotation = relevantPoints.get(0).getRotation().interpolate(
+            relevantPoints.get(1).getRotation(), percentAlongAB);
 
         double stateSpeed = 0;
         // If our speed is increasing, accelerate instantly,
@@ -417,7 +417,7 @@ public class PurePursuitController extends Command implements RotationController
         if (relevantPoints.get(0).speedMetersPerSecond < relevantPoints.get(1).speedMetersPerSecond) {
             stateSpeed = relevantPoints.get(1).speedMetersPerSecond;
         } else {
-            stateSpeed = PathPoint.getAtLinearInterpolation(
+            stateSpeed = PathPoint.interpolate(
                 relevantPoints.get(0).speedMetersPerSecond, 
                 relevantPoints.get(1).speedMetersPerSecond, 
                 percentAlongAB
@@ -460,10 +460,10 @@ public class PurePursuitController extends Command implements RotationController
             PathPoint pointC = path.points.get(lastCrossedPointIndex + 2);
             // grab perpendicular intersection
             Translation2d perpendicularIntersectionBC = PathPoint.findPerpendicularIntersection(
-                pointB.posMeters, pointC.posMeters, robotTranslation
+                pointB.getTranslation(), pointC.getTranslation(), robotTranslation
             );
             Translation2d perpendicularIntersectionAB = PathPoint.findPerpendicularIntersection(
-                pointA.posMeters, pointB.posMeters, robotTranslation
+                pointA.getTranslation(), pointB.getTranslation(), robotTranslation
             );
 
             //println("Found perpendicular intersection at " + perpendicularIntersectionBC);

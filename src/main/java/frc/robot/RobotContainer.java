@@ -6,14 +6,20 @@ package frc.robot;
 
 import frc.library.auto.pathing.FollowControllers;
 import frc.library.auto.pathing.PurePursuitController;
-import frc.library.auto.pathing.pathObjects.Path;
 import frc.library.auto.pathing.pathObjects.PathPoint;
 import frc.robot.commands.Drive;
 import frc.robot.subsystems.Drivetrain;
+
+import java.io.IOException;
+import java.nio.file.Path;
+
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.TrajectoryUtil;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RepeatCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -29,6 +35,8 @@ public class RobotContainer {
 
   Drivetrain drivetrain = Drivetrain.getInstance();
 
+  PurePursuitController pathWeaverPath;
+
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
     // Configure the trigger bindings
@@ -36,6 +44,18 @@ public class RobotContainer {
     drivetrain.setDefaultCommand(new Drive(drivetrain));
 
     PurePursuitController.setLookAheadScalar(1);
+
+    String trajectoryJSON = "paths/Unnamed.wpilib.json";
+    Trajectory trajectory = new Trajectory();
+
+    try {
+      Path trajectoryPath = Filesystem.getDeployDirectory().toPath().resolve(trajectoryJSON);
+      trajectory = TrajectoryUtil.fromPathweaverJson(trajectoryPath);
+    } catch (IOException ex) {
+      DriverStation.reportError("Unable to open trajectory: " + trajectoryJSON, ex.getStackTrace());
+    }
+
+    pathWeaverPath = new PurePursuitController(new frc.library.auto.pathing.pathObjects.Path(trajectory, 10));
   }
 
   /**
@@ -58,70 +78,6 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return new RepeatCommand(
-      new SequentialCommandGroup(
-        new FollowControllers(
-          new PurePursuitController(
-            new PathPoint(
-              new Translation2d(1, 1),
-              new Rotation2d(),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(3, 2),
-              new Rotation2d(),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(5, 1),
-              new Rotation2d(),
-              5
-            ),
-            new PathPoint(
-              new Translation2d(8, 2),
-              Rotation2d.fromDegrees(180),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(10, 1),
-              Rotation2d.fromDegrees(180),
-              0
-            )
-          ), 
-          drivetrain
-        ),
-
-        new FollowControllers(
-          new PurePursuitController(
-            new PathPoint(
-              new Translation2d(10, 1),
-              Rotation2d.fromDegrees(180),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(8, 2),
-              Rotation2d.fromDegrees(180),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(5, 1),
-              new Rotation2d(),
-              5
-            ),
-            new PathPoint(
-              new Translation2d(3, 2),
-              new Rotation2d(),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(1, 1),
-              new Rotation2d(),
-              0
-            )
-          ), 
-          drivetrain
-        )
-      )
-    );
+    return new FollowControllers(pathWeaverPath, drivetrain);
   }
 }

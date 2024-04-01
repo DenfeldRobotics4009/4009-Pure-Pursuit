@@ -4,19 +4,16 @@
 
 package frc.library.auto.pathing.pathObjects;
 
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.PrintCommand;
+import frc.library.auto.pathing.PurePursuitController;
 
 /**
  * A point along a Path
  */
-public class PathPoint {
-
-    public Translation2d posMeters;
-    public Rotation2d orientation; // Implemented by path constructor
+public class PathPoint extends Pose2d {
 
     public double speedMetersPerSecond; // Corrected by path constructor
 
@@ -24,20 +21,26 @@ public class PathPoint {
      * Constructs a new PathPoint with the given statistics. The
      * order of PathPoints constructed will define the order they
      * are driven by the robot.
-     * @param PosMeters Position of point on the field in meters
-     * @param Orientation The goal orientation of the robot when it reaches this point
-     * @param SpeedMetersPerSecond The speed the robot should travel THROUGH this point
+     * @param poseMeters Position of point on the field in meters
+     * @param orientation The goal orientation of the robot when it reaches this point
+     * @param speedMetersPerSecond The speed the robot should travel THROUGH this point
      */
-    public PathPoint(
-        Translation2d PosMeters,
-        Rotation2d Orientation,
-        double SpeedMetersPerSecond
-    ) {
-        posMeters = PosMeters;
+    public PathPoint(Translation2d poseMeters, Rotation2d orientation, double speedMetersPerSecond) {
+        super(poseMeters, orientation);
 
         // May be overridden
-        speedMetersPerSecond = SpeedMetersPerSecond;
-        orientation = Orientation;
+        this.speedMetersPerSecond = MathUtil.clamp(speedMetersPerSecond, 0, PurePursuitController.maxVelocityMeters);
+    }
+
+    /**
+     * Constructs a new PathPoint with the given statistics. The
+     * order of PathPoints constructed will define the order they
+     * are driven by the robot.
+     * @param posMeters Position of point on the field in meters
+     * @param speedMetersPerSecond The speed the robot should travel THROUGH this point
+     */
+    public PathPoint(Pose2d poseMeters, double speedMetersPerSecond) {
+        this(poseMeters.getTranslation(), poseMeters.getRotation(), speedMetersPerSecond);
     }
     /**
      * 
@@ -48,24 +51,10 @@ public class PathPoint {
      * @return Calculated value between Initial and Final 
      * that is on the interpolated line function.
      */
-    public static double getAtLinearInterpolation(
+    public static double interpolate(
         double Initial, double Final, double PercentBetween
     ) {
         return (Final - Initial) * PercentBetween + Initial;
-    }
-
-    /**
-     * 
-     * @param Initial Initial Value
-     * @param Final Final Value
-     * @param Distance Distance between
-     * 
-     * @return Slope
-     */
-    public static double getSlopeOfLinearInterpolation(
-        double Initial, double Final, double Distance
-    ) {
-        return (Final - Initial) / Distance;
     }
     
     /**
@@ -120,10 +109,6 @@ public class PathPoint {
         return clamp(pointA, pointB, intersection);
     }
 
-    public double getDistance(PathPoint Point) {
-        return posMeters.getDistance(Point.posMeters);
-    }
-
     /**
      * Clamps an input translation2d into the boundaries specified by the corners
      * @param cornerA
@@ -149,13 +134,17 @@ public class PathPoint {
     public PathPoint interpolate(PathPoint finalPoint, double t) {
         return new PathPoint(
             // Position
-            posMeters.interpolate(finalPoint.posMeters, t), 
+            getTranslation().interpolate(finalPoint.getTranslation(), t), 
             // Rotation
-            orientation.interpolate(finalPoint.orientation, t),
+            getRotation().interpolate(finalPoint.getRotation(), t),
             // Speed (Unadjusted)
-            getAtLinearInterpolation(
+            interpolate(
                 speedMetersPerSecond, finalPoint.speedMetersPerSecond, t)
         );
+    }
+
+    public double getDistance(Pose2d pathPoint) {
+        return getTranslation().getDistance(pathPoint.getTranslation());
     }
 
     /**

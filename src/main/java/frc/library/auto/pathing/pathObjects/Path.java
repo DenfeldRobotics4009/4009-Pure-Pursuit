@@ -7,20 +7,16 @@ package frc.library.auto.pathing.pathObjects;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj2.command.PrintCommand;
+import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.Trajectory.State;
 import frc.library.auto.pathing.PurePursuitController;
 
 public class Path {
 
-    public final ArrayList<PathPoint> points;
+    public ArrayList<PathPoint> points;
 
-    public final double lastPointTolerance;
+    public double lastPointTolerance;
     
     /**
      * Constructs a path from a given set of points,
@@ -45,12 +41,52 @@ public class Path {
     }
 
     /**
+     * Constructs a path given a pure pursuit trajectory,
+     * The trajectory is sampled every half second along its
+     * route to form each pathPoint.
+     * @param lastPointTolerance meters, the path will finish
+     * when the robot is within this distance of the last point.
+     * @param pathWeaverTrajectory
+     * @param samplesPerSecond the rate to add points to the path from
+     * the trajectory, higher samples per second means more points, and 
+     * a more accurate path. High sample rates may lead to high memory usage.
+     */
+    public Path(double lastPointTolerance, Trajectory pathWeaverTrajectory, double samplesPerSecond) {
+        ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
+        for (int i = 0; i < pathWeaverTrajectory.getTotalTimeSeconds() * samplesPerSecond; i ++) {
+            State currentState = pathWeaverTrajectory.sample((double) i / samplesPerSecond);
+
+            tempPoints.add(new PathPoint(currentState.poseMeters, currentState.velocityMetersPerSecond));
+        }
+
+        process(lastPointTolerance, tempPoints);
+    }
+
+    /**
+     * Constructs a path given a pure pursuit trajectory,
+     * 0.2 meters is set as the default end point tolerance.
+     * The trajectory is sampled every half second along its
+     * route to form each pathPoint.
+     * @param pathWeaverTrajectory
+     * @param samplesPerSecond the rate to add points to the path from
+     * the trajectory, higher samples per second means more points, and 
+     * a more accurate path. High sample rates may lead to high memory usage.
+     */
+    public Path(Trajectory pathWeaverTrajectory, double samplesPerSecond) {
+        this(PurePursuitController.endpointTolerance, pathWeaverTrajectory, samplesPerSecond);
+    }
+
+    /**
      * Constructs a path from multiple points
      * @param Points ArrayList<PathPoint> the first point passed
      * into this initializer is the first point along the path.
      * @param lastPointTolerance double in meters
      */
     public Path(double lastPointTolerance, ArrayList<PathPoint> Points) {
+        process(lastPointTolerance, Points);
+    }
+
+    void process(double lastPointTolerance, ArrayList<PathPoint> Points) {
         System.out.println();
 
         System.out.println("Processing path " + this.toString());
@@ -72,7 +108,11 @@ public class Path {
 
         // Increment rotation of each point by the forward direction angle
         for (PathPoint pathPoint : Points) {
-            pathPoint.orientation = pathPoint.orientation.plus(PurePursuitController.forwardAngle);
+            pathPoint = new PathPoint(
+                pathPoint.getTranslation(), 
+                pathPoint.getRotation().plus(PurePursuitController.forwardAngle), 
+                pathPoint.speedMetersPerSecond
+            );
         }
 
         // Parse through a copy, as the original is being edited
@@ -135,7 +175,7 @@ public class Path {
         // Parse through point and print data
         for (int i = 0; i < points.size(); i++) {
             System.out.print("Point " + i);
-            System.out.print(" - " + new Pose2d(points.get(i).posMeters, points.get(i).orientation));
+            System.out.print(" - " + new Pose2d(points.get(i).getTranslation(), points.get(i).getRotation()));
             System.out.println(" - " + points.get(i).speedMetersPerSecond + " meters/sec");
         }
 
