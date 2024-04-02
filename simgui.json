@@ -14,6 +14,15 @@
     },
     "windows": {
       "/SmartDashboard/Field": {
+        "Path Trajectory": {
+          "arrowSize": 0,
+          "arrows": false,
+          "style": "Line",
+          "weight": 1.0
+        },
+        "height": 8.229599952697754,
+        "image": "C:\\Users\\cwedi\\Downloads\\247f4627b31254ecef02083fa886fe8723be2a83.png",
+        "width": 16.459199905395508,
         "window": {
           "visible": true
         }

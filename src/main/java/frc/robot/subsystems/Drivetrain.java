@@ -38,7 +38,6 @@ public class Drivetrain extends SubsystemBase implements DriveSubsystem {
    */
   private Drivetrain() {
     velocityTimer.start();
-    SmartDashboard.putData("Field", field);
   }
 
   @Override

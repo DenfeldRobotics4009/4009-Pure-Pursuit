@@ -5,6 +5,8 @@
 package frc.library.auto.pathing;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
@@ -12,11 +14,17 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.TrajectoryConfig;
+import edu.wpi.first.math.trajectory.TrajectoryGenerator;
+import edu.wpi.first.math.trajectory.Trajectory.State;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.library.auto.pathing.controllers.RotationController;
 import frc.library.auto.pathing.controllers.TranslationController;
@@ -25,65 +33,6 @@ import frc.library.auto.pathing.pathObjects.PathPoint;
 import frc.library.auto.pathing.pathObjects.PathState;
 
 public class PurePursuitController extends Command implements RotationController, TranslationController {
-    
-    private class PurePursuitDiagnostics {
-        DoublePublisher goalX;
-        DoublePublisher goalY;
-        DoublePublisher goalTheta;
-
-        DoublePublisher currentX;
-        DoublePublisher currentY;
-        DoublePublisher currentTheta;
-
-        DoublePublisher stateSpeed;
-        IntegerPublisher lastCrossedPointIndex;
-
-        DoublePublisher distanceToGoal;
-        DoublePublisher percentAlongLine;
-        DoublePublisher lookAhead;
-
-        public PurePursuitDiagnostics() {
-            NetworkTable purePursuitTable = NetworkTableInstance.getDefault().getTable("PurePursuit");
-            goalX = purePursuitTable.getDoubleTopic("goalX").getEntry(0);
-            goalY = purePursuitTable.getDoubleTopic("goalY").getEntry(0);
-            goalTheta = purePursuitTable.getDoubleTopic("goalTheta").getEntry(0);
-
-            currentX = purePursuitTable.getDoubleTopic("currentX").getEntry(0);
-            currentY = purePursuitTable.getDoubleTopic("currentY").getEntry(0);
-            currentTheta = purePursuitTable.getDoubleTopic("currentTheta").getEntry(0);
-
-            stateSpeed = purePursuitTable.getDoubleTopic("stateSpeed").getEntry(0);
-            lastCrossedPointIndex = purePursuitTable.getIntegerTopic("lastCrossedPointIndex").getEntry(0);
-
-            distanceToGoal = purePursuitTable.getDoubleTopic("distanceToGoal").getEntry(0);
-            percentAlongLine = purePursuitTable.getDoubleTopic("percentAlongLine").getEntry(0);
-            lookAhead = purePursuitTable.getDoubleTopic("lookAhead").getEntry(0);
-        }
-
-        public void publishEntry(
-            Pose2d goalPosition, 
-            Pose2d currentPosition, 
-            double speed, 
-            int lastCrossedPointIndex,
-            double percentAlongLine,
-            double lookAhead
-        ) {
-            goalX.set(goalPosition.getX());
-            goalY.set(goalPosition.getY());
-            goalTheta.set(goalPosition.getRotation().getRadians());
-
-            currentX.set(currentPosition.getX());
-            currentY.set(currentPosition.getY());
-            currentTheta.set(currentPosition.getRotation().getRadians());
-
-            stateSpeed.set(speed);
-            this.lastCrossedPointIndex.set(lastCrossedPointIndex);
-
-            distanceToGoal.set(goalPosition.getTranslation().getDistance(currentPosition.getTranslation()));
-            this.percentAlongLine.set(percentAlongLine);
-            this.lookAhead.set(lookAhead);
-        }
-    }
 
     // Set of processed points
     final Path path;
@@ -108,34 +57,68 @@ public class PurePursuitController extends Command implements RotationController
     // this metric is only used in the case of decelerating along the path.
     public static double maxAccelerationMeters = 2.7;
     public static double turningP = 5, turningI = 0, turningD = 0;
+    // If the robot comes this close to its goal, it will increment 
+    // the last crossed point index.
+    public static double distanceToGoalTolerance = endpointTolerance;    
 
-    PurePursuitDiagnostics diagnostics = new PurePursuitDiagnostics();
+    PurePursuitDiagnostics diagnostics;
 
     double lastDistanceToGoal = lookAheadMeters;
 
-    /**
-     * Follows a given path
-     * @param path
-     */
     public PurePursuitController(Path path) {
         this.path = path;
         rotationController.enableContinuousInput(-Math.PI, Math.PI);
     }
 
     /**
-     * Follows a given path
-     * @param pathPoints
+     * Constructs a path from a given set of points,
+     * 0.02 meters is set as the default end point tolerance
+     * @param Points the first point passed into this 
+     * initializer is the first point along the path.
      */
-    public PurePursuitController(PathPoint... pathPoints) {
-        this(new Path(pathPoints));
+    public PurePursuitController(PathPoint... Points) {
+        this(new Path(Points));
     }
 
     /**
-     * Follows a given path
-     * @param pathPoints
+     * Constructs a path from a given set of points,
+     * 0.2 meters is set as the default end point tolerance
+     * @param lastPointTolerance meters, the path will finish
+     * when the robot is within this distance of the last point.
+     * @param Points the first point passed into this 
+     * initializer is the first point along the path.
      */
-    public PurePursuitController(double lastPointTolerance, PathPoint... pathPoints) {
-        this(new Path(lastPointTolerance, pathPoints));
+    public PurePursuitController(double lastPointTolerance, PathPoint... Points) {
+        this(new Path(lastPointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points))));
+    }
+
+    /**
+     * Constructs a path given a pure pursuit trajectory,
+     * The trajectory is sampled every half second along its
+     * route to form each pathPoint.
+     * @param lastPointTolerance meters, the path will finish
+     * when the robot is within this distance of the last point.
+     * @param pathWeaverTrajectory
+     * @param samplesPerSecond the rate to add points to the path from
+     * the trajectory, higher samples per second means more points, and 
+     * a more accurate path. High sample rates may lead to high memory usage.
+     */
+    public PurePursuitController(double lastPointTolerance, Trajectory pathWeaverTrajectory, double samplesPerSecond) {
+        this(new Path(lastPointTolerance, pathWeaverTrajectory, samplesPerSecond));
+    }
+
+    /**
+     * Constructs a path given a pure pursuit trajectory,
+     * 0.2 meters is set as the default end point tolerance.
+     * The trajectory is sampled every half second along its
+     * route to form each pathPoint.
+     * @param pathWeaverTrajectory
+     * @param samplesPerSecond the rate to add points to the path from
+     * the trajectory, higher samples per second means more points, and 
+     * a more accurate path. High sample rates may lead to high memory usage.
+     */
+    public PurePursuitController(Trajectory pathWeaverTrajectory, double samplesPerSecond) {
+        this(new Path(pathWeaverTrajectory, samplesPerSecond));
     }
 
     /**
@@ -209,6 +192,7 @@ public class PurePursuitController extends Command implements RotationController
     public void initialize() {
         lastCrossedPointIndex = 0;
         lookAheadMeters = 0.4;
+        diagnostics = new PurePursuitDiagnostics(path);
         System.out.println("--- Following path of points: ---");
         for (PathPoint point : path.points) {System.out.println(point.getTranslation() + "," + point.getRotation());}
         System.out.println("--- --- --- -- --- -- --- --- ---");
@@ -237,6 +221,10 @@ public class PurePursuitController extends Command implements RotationController
      */
     public boolean isFinished() {
 
+        if (!path.isValid()) {
+            return true;
+        }
+
         // calculate distance to last point
         double distanceToLastPointMeters = getLastPoint().getDistance(lastPosition);
 
@@ -257,6 +245,12 @@ public class PurePursuitController extends Command implements RotationController
     }
 
     ChassisSpeeds getSpeeds(Pose2d robotPosition) {
+
+        if (!path.isValid()) {
+            DriverStation.reportError("Cannot follow a malformed path", false);
+            return new ChassisSpeeds();
+        }
+
         PathState state = getPathState(robotPosition);
         // The target relative to the robots current position
         lastPosition = robotPosition;
@@ -430,6 +424,12 @@ public class PurePursuitController extends Command implements RotationController
         // Check to increment index
         if (compareWithNextLine(robotTranslation)) {
             lastCrossedPointIndex ++;
+            System.out.println("Increment last crossed point index to " + lastCrossedPointIndex);
+        }
+
+        if (lastDistanceToGoal < distanceToGoalTolerance) {
+            lastCrossedPointIndex ++;
+            DriverStation.reportWarning("Forced incrementation of last crossed point index", false);
             System.out.println("Increment last crossed point index to " + lastCrossedPointIndex);
         }
 

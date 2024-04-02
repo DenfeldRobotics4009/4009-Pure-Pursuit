@@ -10,6 +10,7 @@ import java.util.Arrays;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.Trajectory.State;
+import edu.wpi.first.wpilibj.DriverStation;
 import frc.library.auto.pathing.PurePursuitController;
 
 public class Path {
@@ -58,6 +59,9 @@ public class Path {
 
             tempPoints.add(new PathPoint(currentState.poseMeters, currentState.velocityMetersPerSecond));
         }
+        // Always sample the first and last time
+        State state = pathWeaverTrajectory.sample(pathWeaverTrajectory.getTotalTimeSeconds());
+        tempPoints.add(new PathPoint(state.poseMeters, state.velocityMetersPerSecond));
 
         process(lastPointTolerance, tempPoints);
     }
@@ -105,6 +109,11 @@ public class Path {
 
         this.lastPointTolerance = lastPointTolerance;
         points = Points;
+
+        if (!isValid()) {
+            DriverStation.reportError("Malformed path: A path cannot be formed with less than three points.", true);
+            return;
+        }
 
         // Increment rotation of each point by the forward direction angle
         for (PathPoint pathPoint : Points) {
@@ -180,5 +189,21 @@ public class Path {
         }
 
         System.out.println();
+    }
+
+    /**
+     * Checks if the path is valid
+     * @return true if the path is valid
+     */
+    public boolean isValid() {
+        if (points.size() < 3) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public ArrayList<Pose2d> getPose2ds() {
+        return new ArrayList<Pose2d>(points);
     }
 } 

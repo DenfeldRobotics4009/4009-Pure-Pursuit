@@ -6,13 +6,14 @@ package frc.robot;
 
 import frc.library.auto.pathing.FollowControllers;
 import frc.library.auto.pathing.PurePursuitController;
+import frc.library.auto.pathing.pathObjects.Path;
 import frc.library.auto.pathing.pathObjects.PathPoint;
 import frc.robot.commands.Drive;
 import frc.robot.subsystems.Drivetrain;
 
 import java.io.IOException;
-import java.nio.file.Path;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.trajectory.Trajectory;
@@ -35,27 +36,13 @@ public class RobotContainer {
 
   Drivetrain drivetrain = Drivetrain.getInstance();
 
-  PurePursuitController pathWeaverPath;
-
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
     // Configure the trigger bindings
     configureBindings();
     drivetrain.setDefaultCommand(new Drive(drivetrain));
 
-    PurePursuitController.setLookAheadScalar(1);
-
-    String trajectoryJSON = "paths/Unnamed.wpilib.json";
-    Trajectory trajectory = new Trajectory();
-
-    try {
-      Path trajectoryPath = Filesystem.getDeployDirectory().toPath().resolve(trajectoryJSON);
-      trajectory = TrajectoryUtil.fromPathweaverJson(trajectoryPath);
-    } catch (IOException ex) {
-      DriverStation.reportError("Unable to open trajectory: " + trajectoryJSON, ex.getStackTrace());
-    }
-
-    pathWeaverPath = new PurePursuitController(new frc.library.auto.pathing.pathObjects.Path(trajectory, 10));
+    PurePursuitController.setLookAheadScalar(0.2);
   }
 
   /**
@@ -77,6 +64,15 @@ public class RobotContainer {
    * @return the command to run in autonomous
    */
   public Command getAutonomousCommand() {
+    Trajectory trajectory = new Trajectory();
+    try {
+      trajectory = TrajectoryUtil.fromPathweaverJson(
+        Filesystem.getDeployDirectory().toPath().resolve("paths/Unnamed_0.wpilib.json")
+      );
+    } catch (IOException e) {
+      DriverStation.reportError("Cannot open path", true);
+    }
+    PurePursuitController pathWeaverPath = new PurePursuitController(new Path(trajectory, 50));
     // An example command will be run in autonomous
     return new FollowControllers(pathWeaverPath, drivetrain);
   }
