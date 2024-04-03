@@ -6,8 +6,6 @@ package frc.library.auto.pathing;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -15,16 +13,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.trajectory.Trajectory;
-import edu.wpi.first.math.trajectory.TrajectoryConfig;
-import edu.wpi.first.math.trajectory.TrajectoryGenerator;
-import edu.wpi.first.math.trajectory.Trajectory.State;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.IntegerPublisher;
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.library.auto.pathing.controllers.RotationController;
 import frc.library.auto.pathing.controllers.TranslationController;
@@ -35,7 +24,7 @@ import frc.library.auto.pathing.pathObjects.PathState;
 public class PurePursuitController extends Command implements RotationController, TranslationController {
 
     // Set of processed points
-    final Path path;
+    public final Path path;
 
     // Current index along the path
     int lastCrossedPointIndex = 0;
@@ -59,7 +48,7 @@ public class PurePursuitController extends Command implements RotationController
     public static double turningP = 5, turningI = 0, turningD = 0;
     // If the robot comes this close to its goal, it will increment 
     // the last crossed point index.
-    public static double distanceToGoalTolerance = endpointTolerance;    
+    public static double distanceToGoalTolerance = endpointTolerance * 0.5;    
 
     PurePursuitDiagnostics diagnostics;
 
@@ -183,6 +172,15 @@ public class PurePursuitController extends Command implements RotationController
         PurePursuitController.endpointTolerance = MathUtil.clamp(tolerance, 0, 1);
     }
 
+    /**
+     * Sets the default allowed distance from the robot to its
+     * goal before incrementing last crossed point index
+     * @param tolerance
+     */
+    public static void setDistanceToGoalTolerance(double tolerance) {
+        PurePursuitController.distanceToGoalTolerance = MathUtil.clamp(tolerance, 0, 1);
+    }
+
 
     // Called when the command is initially scheduled.
     @Override
@@ -236,7 +234,7 @@ public class PurePursuitController extends Command implements RotationController
     }
 
     private static double clampStateSpeed(double stateSpeed) {
-        return MathUtil.clamp(stateSpeed, 0.01, maxVelocityMeters);
+        return MathUtil.clamp(stateSpeed, 0.1, maxVelocityMeters);
     }
 
     public static double calculateLookAhead(double speed) {
@@ -498,7 +496,7 @@ public class PurePursuitController extends Command implements RotationController
                     path.points.get(lastCrossedPointIndex + i)
                 );
             } catch (IndexOutOfBoundsException e) {
-                DriverStation.reportWarning("Could not grab point at index " + lastCrossedPointIndex + i, e.getStackTrace());
+                DriverStation.reportWarning("Could not grab point at index " + (lastCrossedPointIndex + i), e.getStackTrace());
             }
         }
 

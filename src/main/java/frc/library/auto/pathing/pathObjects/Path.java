@@ -4,20 +4,56 @@
 
 package frc.library.auto.pathing.pathObjects;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.Trajectory.State;
+import edu.wpi.first.math.trajectory.TrajectoryUtil;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Filesystem;
 import frc.library.auto.pathing.PurePursuitController;
+
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.PathPlannerTrajectory;
 
 public class Path {
 
     public ArrayList<PathPoint> points;
 
     public double lastPointTolerance;
+
+    /**
+     * Constructs a path from a path planner file name
+     * @param lastPointTolerance
+     */
+    public static Path getFromPathPlanner(double lastPointTolerance, String pathName, double samplesPerSecond) {
+        PathPlannerPath pathPlannerPath = PathPlannerPath.fromPathFile(pathName);
+        return new Path(lastPointTolerance, pathPlannerPath.getTrajectory(
+            new ChassisSpeeds(), pathPlannerPath.getPreviewStartingHolonomicPose().getRotation()), 
+            samplesPerSecond
+        );
+    }
+
+    /**
+     * Constructs a path from a path planner file name. Paths must be inserted
+     * into the src\main\deploy\paths directory
+     */
+    public static Path getFromPathWeaver(double lastPointTolerance, String pathName, double samplesPerSecond) {
+            Trajectory trajectory = new Trajectory();
+            try {
+                trajectory = TrajectoryUtil.fromPathweaverJson(
+                Filesystem.getDeployDirectory().toPath().resolve("paths/" + pathName)
+            );
+            } catch (IOException e) {
+                DriverStation.reportError("Cannot open path", true);
+            }
+
+            return new Path(lastPointTolerance, trajectory, samplesPerSecond);
+    }
     
     /**
      * Constructs a path from a given set of points,
@@ -53,8 +89,10 @@ public class Path {
      * a more accurate path. High sample rates may lead to high memory usage.
      */
     public Path(double lastPointTolerance, Trajectory pathWeaverTrajectory, double samplesPerSecond) {
+
         ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
         for (int i = 0; i < pathWeaverTrajectory.getTotalTimeSeconds() * samplesPerSecond; i ++) {
+            
             State currentState = pathWeaverTrajectory.sample((double) i / samplesPerSecond);
 
             tempPoints.add(new PathPoint(currentState.poseMeters, currentState.velocityMetersPerSecond));
@@ -62,6 +100,33 @@ public class Path {
         // Always sample the first and last time
         State state = pathWeaverTrajectory.sample(pathWeaverTrajectory.getTotalTimeSeconds());
         tempPoints.add(new PathPoint(state.poseMeters, state.velocityMetersPerSecond));
+
+        process(lastPointTolerance, tempPoints);
+    }
+
+    /**
+     * Constructs a path given a pure pursuit trajectory,
+     * The trajectory is sampled every half second along its
+     * route to form each pathPoint.
+     * @param lastPointTolerance meters, the path will finish
+     * when the robot is within this distance of the last point.
+     * @param pathPlannerTrajectory
+     * @param samplesPerSecond the rate to add points to the path from
+     * the trajectory, higher samples per second means more points, and 
+     * a more accurate path. High sample rates may lead to high memory usage.
+     */
+    public Path(double lastPointTolerance, PathPlannerTrajectory pathPlannerTrajectory, double samplesPerSecond) {
+
+        ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
+        for (int i = 0; i < pathPlannerTrajectory.getTotalTimeSeconds() * samplesPerSecond; i ++) {
+            
+            PathPlannerTrajectory.State currentState = pathPlannerTrajectory.sample((double) i / samplesPerSecond);
+
+            tempPoints.add(new PathPoint(currentState.positionMeters, currentState.targetHolonomicRotation, currentState.velocityMps));
+        }
+        // Always sample the first and last time
+        PathPlannerTrajectory.State state = pathPlannerTrajectory.sample(pathPlannerTrajectory.getTotalTimeSeconds());
+        tempPoints.add(new PathPoint(state.positionMeters, state.targetHolonomicRotation, state.velocityMps));
 
         process(lastPointTolerance, tempPoints);
     }
@@ -78,6 +143,20 @@ public class Path {
      */
     public Path(Trajectory pathWeaverTrajectory, double samplesPerSecond) {
         this(PurePursuitController.endpointTolerance, pathWeaverTrajectory, samplesPerSecond);
+    }
+
+    /**
+     * Constructs a path given a pure pursuit trajectory,
+     * 0.2 meters is set as the default end point tolerance.
+     * The trajectory is sampled every half second along its
+     * route to form each pathPoint.
+     * @param pathPlannerTrajectory
+     * @param samplesPerSecond the rate to add points to the path from
+     * the trajectory, higher samples per second means more points, and 
+     * a more accurate path. High sample rates may lead to high memory usage.
+     */
+    public Path(PathPlannerTrajectory pathPlannerTrajectory, double samplesPerSecond) {
+        this(PurePursuitController.endpointTolerance, pathPlannerTrajectory, samplesPerSecond);
     }
 
     /**

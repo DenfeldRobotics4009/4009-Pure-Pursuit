@@ -6,22 +6,12 @@ package frc.robot;
 
 import frc.library.auto.pathing.FollowControllers;
 import frc.library.auto.pathing.PurePursuitController;
+import frc.library.auto.pathing.SetDrivePosition;
 import frc.library.auto.pathing.pathObjects.Path;
-import frc.library.auto.pathing.pathObjects.PathPoint;
 import frc.robot.commands.Drive;
 import frc.robot.subsystems.Drivetrain;
 
-import java.io.IOException;
-
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.trajectory.Trajectory;
-import edu.wpi.first.math.trajectory.TrajectoryUtil;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.RepeatCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -43,6 +33,7 @@ public class RobotContainer {
     drivetrain.setDefaultCommand(new Drive(drivetrain));
 
     PurePursuitController.setLookAheadScalar(0.2);
+    PurePursuitController.setDistanceToGoalTolerance(0.1);
   }
 
   /**
@@ -64,16 +55,16 @@ public class RobotContainer {
    * @return the command to run in autonomous
    */
   public Command getAutonomousCommand() {
-    Trajectory trajectory = new Trajectory();
-    try {
-      trajectory = TrajectoryUtil.fromPathweaverJson(
-        Filesystem.getDeployDirectory().toPath().resolve("paths/Unnamed_0.wpilib.json")
-      );
-    } catch (IOException e) {
-      DriverStation.reportError("Cannot open path", true);
-    }
-    PurePursuitController pathWeaverPath = new PurePursuitController(new Path(trajectory, 50));
     // An example command will be run in autonomous
-    return new FollowControllers(pathWeaverPath, drivetrain);
+    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceFirstNote", 4));
+    return new SequentialCommandGroup(
+      new SetDrivePosition(drivetrain, pathA.path.points.get(0)),
+      new FollowControllers(pathA, drivetrain),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceSecondNote", 4)), drivetrain),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceThirdNote", 4)), drivetrain),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceFourthNote", 4)), drivetrain),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceFifthNote", 4)), drivetrain),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceSixthNote", 4)), drivetrain)
+    );
   }
 }
