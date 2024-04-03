@@ -32,23 +32,7 @@ public class PurePursuitController extends Command implements RotationController
     double lookAheadMeters = 0.4;// Initial at 10 cm
     Pose2d lastPosition; // Initialize as null to avoid a path ending before its set for the first time
 
-    PIDController rotationController = new PIDController(turningP, turningI, turningD);
-
-    // The distance the robot must be within from the last point
-    public static double endpointTolerance = 0.4;
-    // The front of the robot
-    public static Rotation2d forwardAngle = new Rotation2d();
-    // LookAhead distance = lookAheadScalar * speed
-    public static double lookAheadScalar = 1.5;
-    // The maximum speed the robot can travel
-    public static double maxVelocityMeters = 5.06; // Mk4I Swerve Module
-    // The maximum speed at which the robot can accelerate, however,
-    // this metric is only used in the case of decelerating along the path.
-    public static double maxAccelerationMeters = 2.7;
-    public static double turningP = 5, turningI = 0, turningD = 0;
-    // If the robot comes this close to its goal, it will increment 
-    // the last crossed point index.
-    public static double distanceToGoalTolerance = endpointTolerance * 0.5;    
+    PIDController rotationController;
 
     PurePursuitDiagnostics diagnostics;
 
@@ -56,6 +40,8 @@ public class PurePursuitController extends Command implements RotationController
 
     public PurePursuitController(Path path) {
         this.path = path;
+        rotationController = 
+            new PIDController(PurePursuitSettings.turningP, PurePursuitSettings.turningI, PurePursuitSettings.turningD);
         rotationController.enableContinuousInput(-Math.PI, Math.PI);
     }
 
@@ -110,78 +96,6 @@ public class PurePursuitController extends Command implements RotationController
         this(new Path(pathWeaverTrajectory, samplesPerSecond));
     }
 
-    /**
-     * Configures the PID components of the steering
-     * PID controller.
-     * @param P
-     * @param I
-     * @param D
-     */
-    public static void setTurningPID(double P, double I, double D) {
-        turningP = P;
-        turningI = I;
-        turningD = D;
-    }
-
-    /**
-     * Sets the maximum allowed deceleration along paths
-     * This does not limit acceleration, only deceleration.
-     * @param maxAccelerationMeters double [0, 10]
-     */
-    public static void setMaxAccelerationMeters(double maxAccelerationMeters) {
-        PurePursuitController.maxAccelerationMeters = 
-            MathUtil.clamp(maxAccelerationMeters, 0, 10);
-    }
-
-    /**
-     * Sets the maximum allowed speed of paths
-     * @param maxVelocityMeters double [0, 10]
-     */
-    public static void setMaxVelocityMeters(double maxVelocityMeters) {
-        PurePursuitController.maxVelocityMeters = 
-            MathUtil.clamp(maxVelocityMeters, 0, 10);
-    }
-
-    /**
-     * Sets the multiplier used to calculate lookahead
-     * from the current speed of the robot along a path.
-     * lookAheadMeters = speedMeters * lookAheadScalar
-     * @param lookAheadScalar double, [0.1, 10]
-     */
-    public static void setLookAheadScalar(double lookAheadScalar) {
-        PurePursuitController.lookAheadScalar = 
-            MathUtil.clamp(lookAheadScalar, 0.1, 10);
-    }
-
-    /**
-     * Sets the angle offset paths will be adjusted by,
-     * allowing what is considered the front of the robot
-     * to be changed.
-     * @param angle Rotation2d
-     */
-    public static void setForwardAngle(Rotation2d forwardAngle) {
-        PurePursuitController.forwardAngle = forwardAngle;
-    }
-
-    /**
-     * Sets the default allowed distance from the robot to the
-     * last point in the path for the path command to end.
-     * @param tolerance
-     */
-    public static void setDefaultEndpointTolerance(double tolerance) {
-        PurePursuitController.endpointTolerance = MathUtil.clamp(tolerance, 0, 1);
-    }
-
-    /**
-     * Sets the default allowed distance from the robot to its
-     * goal before incrementing last crossed point index
-     * @param tolerance
-     */
-    public static void setDistanceToGoalTolerance(double tolerance) {
-        PurePursuitController.distanceToGoalTolerance = MathUtil.clamp(tolerance, 0, 1);
-    }
-
-
     // Called when the command is initially scheduled.
     @Override
     /**
@@ -191,6 +105,7 @@ public class PurePursuitController extends Command implements RotationController
         lastCrossedPointIndex = 0;
         lookAheadMeters = 0.4;
         diagnostics = new PurePursuitDiagnostics(path);
+        rotationController.setPID(PurePursuitSettings.turningP, PurePursuitSettings.turningI, PurePursuitSettings.turningD);
         System.out.println("--- Following path of points: ---");
         for (PathPoint point : path.points) {System.out.println(point.getTranslation() + "," + point.getRotation());}
         System.out.println("--- --- --- -- --- -- --- --- ---");
@@ -223,6 +138,11 @@ public class PurePursuitController extends Command implements RotationController
             return true;
         }
 
+        // Ignore if we do not have a last position yet
+        if (lastPosition == null) {
+            return false;
+        }
+
         // calculate distance to last point
         double distanceToLastPointMeters = getLastPoint().getDistance(lastPosition);
 
@@ -234,12 +154,12 @@ public class PurePursuitController extends Command implements RotationController
     }
 
     private static double clampStateSpeed(double stateSpeed) {
-        return MathUtil.clamp(stateSpeed, 0.1, maxVelocityMeters);
+        return MathUtil.clamp(stateSpeed, 0.1, PurePursuitSettings.maxVelocityMeters);
     }
 
     public static double calculateLookAhead(double speed) {
         double clampedSpeed = clampStateSpeed(speed);
-        return MathUtil.clamp(clampedSpeed * lookAheadScalar, 0.1, 2);
+        return MathUtil.clamp(clampedSpeed * PurePursuitSettings.lookAheadScalar, 0.1, 2);
     }
 
     ChassisSpeeds getSpeeds(Pose2d robotPosition) {
@@ -425,7 +345,7 @@ public class PurePursuitController extends Command implements RotationController
             System.out.println("Increment last crossed point index to " + lastCrossedPointIndex);
         }
 
-        if (lastDistanceToGoal < distanceToGoalTolerance) {
+        if (lastDistanceToGoal < PurePursuitSettings.distanceToGoalTolerance) {
             lastCrossedPointIndex ++;
             DriverStation.reportWarning("Forced incrementation of last crossed point index", false);
             System.out.println("Increment last crossed point index to " + lastCrossedPointIndex);

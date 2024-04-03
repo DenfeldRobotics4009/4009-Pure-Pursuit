@@ -6,6 +6,7 @@ package frc.robot;
 
 import frc.library.auto.pathing.FollowControllers;
 import frc.library.auto.pathing.PurePursuitController;
+import frc.library.auto.pathing.PurePursuitSettings;
 import frc.library.auto.pathing.SetDrivePosition;
 import frc.library.auto.pathing.pathObjects.Path;
 import frc.robot.commands.Drive;
@@ -26,14 +27,23 @@ public class RobotContainer {
 
   Drivetrain drivetrain = Drivetrain.getInstance();
 
+  Command autoCommand;
+
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
     // Configure the trigger bindings
     configureBindings();
     drivetrain.setDefaultCommand(new Drive(drivetrain));
 
-    PurePursuitController.setLookAheadScalar(0.2);
-    PurePursuitController.setDistanceToGoalTolerance(0.1);
+    PurePursuitSettings.setLookAheadScalar(0.2);
+    PurePursuitSettings.setDistanceToGoalTolerance(0.1);
+
+    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(0.5, "DoublePathInitial", 15));
+    autoCommand = new SequentialCommandGroup(
+      new SetDrivePosition(drivetrain, pathA.path.points.get(0)),
+      new FollowControllers(pathA, drivetrain),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "DoublePathFinal", 15)), drivetrain)
+    );
   }
 
   /**
@@ -56,15 +66,6 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceFirstNote", 4));
-    return new SequentialCommandGroup(
-      new SetDrivePosition(drivetrain, pathA.path.points.get(0)),
-      new FollowControllers(pathA, drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceSecondNote", 4)), drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceThirdNote", 4)), drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceFourthNote", 4)), drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceFifthNote", 4)), drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "7PieceSixthNote", 4)), drivetrain)
-    );
+    return autoCommand;
   }
 }

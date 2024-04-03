@@ -8,7 +8,7 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import frc.library.auto.pathing.PurePursuitController;
+import frc.library.auto.pathing.PurePursuitSettings;
 
 /**
  * A point along a Path
@@ -29,7 +29,7 @@ public class PathPoint extends Pose2d {
         super(poseMeters, orientation);
 
         // May be overridden
-        this.speedMetersPerSecond = MathUtil.clamp(speedMetersPerSecond, 0, PurePursuitController.maxVelocityMeters);
+        this.speedMetersPerSecond = MathUtil.clamp(speedMetersPerSecond, 0, PurePursuitSettings.maxVelocityMeters);
     }
 
     /**

@@ -5,10 +5,13 @@
 package frc.library.auto.pathing.pathObjects;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.Trajectory.State;
@@ -16,7 +19,10 @@ import edu.wpi.first.math.trajectory.TrajectoryUtil;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import frc.library.auto.pathing.PurePursuitController;
+import frc.library.auto.pathing.PurePursuitSettings;
 
+import com.pathplanner.lib.path.GoalEndState;
+import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.path.PathPlannerTrajectory;
 
@@ -31,7 +37,7 @@ public class Path {
      * @param lastPointTolerance
      */
     public static Path getFromPathPlanner(double lastPointTolerance, String pathName, double samplesPerSecond) {
-        PathPlannerPath pathPlannerPath = PathPlannerPath.fromPathFile(pathName);
+        PathPlannerPath pathPlannerPath = PathPlannerPath.fromPathFile(pathName);   
         return new Path(lastPointTolerance, pathPlannerPath.getTrajectory(
             new ChassisSpeeds(), pathPlannerPath.getPreviewStartingHolonomicPose().getRotation()), 
             samplesPerSecond
@@ -46,12 +52,11 @@ public class Path {
             Trajectory trajectory = new Trajectory();
             try {
                 trajectory = TrajectoryUtil.fromPathweaverJson(
-                Filesystem.getDeployDirectory().toPath().resolve("paths/" + pathName)
-            );
+                    Filesystem.getDeployDirectory().toPath().resolve("paths/" + pathName)
+                );
             } catch (IOException e) {
-                DriverStation.reportError("Cannot open path", true);
+                throw new UncheckedIOException(e);
             }
-
             return new Path(lastPointTolerance, trajectory, samplesPerSecond);
     }
     
@@ -62,7 +67,7 @@ public class Path {
      * initializer is the first point along the path.
      */
     public Path(PathPoint... Points) {
-        this(PurePursuitController.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+        this(PurePursuitSettings.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
     }
 
     /**
@@ -89,7 +94,6 @@ public class Path {
      * a more accurate path. High sample rates may lead to high memory usage.
      */
     public Path(double lastPointTolerance, Trajectory pathWeaverTrajectory, double samplesPerSecond) {
-
         ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
         for (int i = 0; i < pathWeaverTrajectory.getTotalTimeSeconds() * samplesPerSecond; i ++) {
             
@@ -98,8 +102,10 @@ public class Path {
             tempPoints.add(new PathPoint(currentState.poseMeters, currentState.velocityMetersPerSecond));
         }
         // Always sample the first and last time
-        State state = pathWeaverTrajectory.sample(pathWeaverTrajectory.getTotalTimeSeconds());
-        tempPoints.add(new PathPoint(state.poseMeters, state.velocityMetersPerSecond));
+        if (pathWeaverTrajectory.getTotalTimeSeconds() > 0) { 
+            State state = pathWeaverTrajectory.sample(pathWeaverTrajectory.getTotalTimeSeconds());
+            tempPoints.add(new PathPoint(state.poseMeters, state.velocityMetersPerSecond));
+        }
 
         process(lastPointTolerance, tempPoints);
     }
@@ -142,7 +148,7 @@ public class Path {
      * a more accurate path. High sample rates may lead to high memory usage.
      */
     public Path(Trajectory pathWeaverTrajectory, double samplesPerSecond) {
-        this(PurePursuitController.endpointTolerance, pathWeaverTrajectory, samplesPerSecond);
+        this(PurePursuitSettings.endpointTolerance, pathWeaverTrajectory, samplesPerSecond);
     }
 
     /**
@@ -156,7 +162,7 @@ public class Path {
      * a more accurate path. High sample rates may lead to high memory usage.
      */
     public Path(PathPlannerTrajectory pathPlannerTrajectory, double samplesPerSecond) {
-        this(PurePursuitController.endpointTolerance, pathPlannerTrajectory, samplesPerSecond);
+        this(PurePursuitSettings.endpointTolerance, pathPlannerTrajectory, samplesPerSecond);
     }
 
     /**
@@ -198,7 +204,7 @@ public class Path {
         for (PathPoint pathPoint : Points) {
             pathPoint = new PathPoint(
                 pathPoint.getTranslation(), 
-                pathPoint.getRotation().plus(PurePursuitController.forwardAngle), 
+                pathPoint.getRotation().plus(PurePursuitSettings.forwardAngle), 
                 pathPoint.speedMetersPerSecond
             );
         }
@@ -222,30 +228,30 @@ public class Path {
             );
 
             // Pull max deceleration from constants
-            if (deceleration > PurePursuitController.maxAccelerationMeters) {
+            if (deceleration > PurePursuitSettings.maxAccelerationMeters) {
 
                 // Clamp speed
                 double previousSpeed = previousPoint.speedMetersPerSecond;
                 // This index will remain unaffected
                 Points.get(i-1).speedMetersPerSecond = 
-                    point.speedMetersPerSecond + deltaD*PurePursuitController.maxAccelerationMeters;
+                    point.speedMetersPerSecond + deltaD*PurePursuitSettings.maxAccelerationMeters;
                 System.out.println(
                     "Clamped speed from " + previousSpeed + " to " + 
                     previousPoint.speedMetersPerSecond
                 );
 
             } else if (
-                deceleration < PurePursuitController.maxAccelerationMeters && 
+                deceleration < PurePursuitSettings.maxAccelerationMeters && 
                 deltaS < 0 && 
                 (
-                    1 + (deltaS / (PurePursuitController.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD) > 0
+                    1 + (deltaS / (PurePursuitSettings.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD) > 0
                     || i == pointsCopy.size()-1 // Ignore the above if we are checking the last point
                 )
             ) {
 
                 // Insert new point
                 // Normalized, deltaS / Swerve.MaxAccelerationMeters is negative
-                double percentFromLastPoint =  1 + (deltaS / (PurePursuitController.maxAccelerationMeters * deltaD));
+                double percentFromLastPoint =  1 + (deltaS / (PurePursuitSettings.maxAccelerationMeters * deltaD));
                 if (i != pointsCopy.size()-1) {
                     percentFromLastPoint -= lookAheadMeters/deltaD;
                 }

@@ -54,14 +54,16 @@ public class PurePursuitDiagnostics {
 
         SmartDashboard.putData("Field", field);
 
-        ArrayList<State> pointsAsStates = new ArrayList<State>();
-        for (Pose2d point : path.getPose2ds()) {
-            pointsAsStates.add(new State(0, 0, 0, point, 0));
-        }
+        if (path.isValid()) {
+            ArrayList<State> pointsAsStates = new ArrayList<State>();
+            for (Pose2d point : path.getPose2ds()) {
+                pointsAsStates.add(new State(0, 0, 0, point, 0));
+            }
 
-        field.getObject("Path Trajectory").setTrajectory(
-            new Trajectory(pointsAsStates)
-        );
+            field.getObject("Path Trajectory").setTrajectory(
+                new Trajectory(pointsAsStates)
+            );
+        }
     }
 
     public void publishEntry(
