@@ -5,14 +5,12 @@
 package frc.library.auto.pathing;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.library.auto.pathing.controllers.RotationController;
@@ -24,7 +22,7 @@ import frc.library.auto.pathing.pathObjects.PathState;
 public class PurePursuitController extends Command implements RotationController, TranslationController {
 
     // Set of processed points
-    public final Path path;
+    final Path path;
 
     // Current index along the path
     int lastCrossedPointIndex = 0;
@@ -43,57 +41,6 @@ public class PurePursuitController extends Command implements RotationController
         rotationController = 
             new PIDController(PurePursuitSettings.turningP, PurePursuitSettings.turningI, PurePursuitSettings.turningD);
         rotationController.enableContinuousInput(-Math.PI, Math.PI);
-    }
-
-    /**
-     * Constructs a path from a given set of points,
-     * 0.02 meters is set as the default end point tolerance
-     * @param Points the first point passed into this 
-     * initializer is the first point along the path.
-     */
-    public PurePursuitController(PathPoint... Points) {
-        this(new Path(Points));
-    }
-
-    /**
-     * Constructs a path from a given set of points,
-     * 0.2 meters is set as the default end point tolerance
-     * @param lastPointTolerance meters, the path will finish
-     * when the robot is within this distance of the last point.
-     * @param Points the first point passed into this 
-     * initializer is the first point along the path.
-     */
-    public PurePursuitController(double lastPointTolerance, PathPoint... Points) {
-        this(new Path(lastPointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points))));
-    }
-
-    /**
-     * Constructs a path given a pure pursuit trajectory,
-     * The trajectory is sampled every half second along its
-     * route to form each pathPoint.
-     * @param lastPointTolerance meters, the path will finish
-     * when the robot is within this distance of the last point.
-     * @param pathWeaverTrajectory
-     * @param samplesPerSecond the rate to add points to the path from
-     * the trajectory, higher samples per second means more points, and 
-     * a more accurate path. High sample rates may lead to high memory usage.
-     */
-    public PurePursuitController(double lastPointTolerance, Trajectory pathWeaverTrajectory, double samplesPerSecond) {
-        this(new Path(lastPointTolerance, pathWeaverTrajectory, samplesPerSecond));
-    }
-
-    /**
-     * Constructs a path given a pure pursuit trajectory,
-     * 0.2 meters is set as the default end point tolerance.
-     * The trajectory is sampled every half second along its
-     * route to form each pathPoint.
-     * @param pathWeaverTrajectory
-     * @param samplesPerSecond the rate to add points to the path from
-     * the trajectory, higher samples per second means more points, and 
-     * a more accurate path. High sample rates may lead to high memory usage.
-     */
-    public PurePursuitController(Trajectory pathWeaverTrajectory, double samplesPerSecond) {
-        this(new Path(pathWeaverTrajectory, samplesPerSecond));
     }
 
     // Called when the command is initially scheduled.
@@ -153,13 +100,13 @@ public class PurePursuitController extends Command implements RotationController
         );
     }
 
-    private static double clampStateSpeed(double stateSpeed) {
-        return MathUtil.clamp(stateSpeed, 0.1, PurePursuitSettings.maxVelocityMeters);
-    }
+    // private static double clampStateSpeed(double stateSpeed) {
+    //     return MathUtil.clamp(stateSpeed, 0.1, PurePursuitSettings.maxVelocityMeters);
+    // }
 
     public static double calculateLookAhead(double speed) {
-        double clampedSpeed = clampStateSpeed(speed);
-        return MathUtil.clamp(clampedSpeed * PurePursuitSettings.lookAheadScalar, 0.1, 2);
+        // double clampedSpeed = clampStateSpeed(speed);
+        return MathUtil.clamp(speed * PurePursuitSettings.lookAheadScalar, 0.1, 2);
     }
 
     ChassisSpeeds getSpeeds(Pose2d robotPosition) {
@@ -337,7 +284,7 @@ public class PurePursuitController extends Command implements RotationController
         }
 
         // Construct state
-        PathState state = new PathState(gotoGoal, interpolatedRotation, clampStateSpeed(stateSpeed));
+        PathState state = new PathState(gotoGoal, interpolatedRotation, stateSpeed);// clampStateSpeed(stateSpeed));
 
         // Check to increment index
         if (compareWithNextLine(robotTranslation)) {
@@ -439,5 +386,9 @@ public class PurePursuitController extends Command implements RotationController
     public Rotation2d getRotationSpeeds(Pose2d robotPosition) {
         ChassisSpeeds speeds = getSpeeds(robotPosition);
         return Rotation2d.fromRadians(speeds.omegaRadiansPerSecond);
+    }
+
+    public Path getPath() {
+        return path;
     }
 }

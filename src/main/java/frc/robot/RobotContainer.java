@@ -12,7 +12,14 @@ import frc.library.auto.pathing.pathObjects.Path;
 import frc.robot.commands.Drive;
 import frc.robot.subsystems.Drivetrain;
 
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.PathPlannerTrajectory;
+
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -27,7 +34,7 @@ public class RobotContainer {
 
   Drivetrain drivetrain = Drivetrain.getInstance();
 
-  Command autoCommand;
+  SendableChooser<SequentialCommandGroup> autoChooser = new SendableChooser<SequentialCommandGroup>();
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -38,12 +45,16 @@ public class RobotContainer {
     PurePursuitSettings.setLookAheadScalar(0.2);
     PurePursuitSettings.setDistanceToGoalTolerance(0.1);
 
-    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(0.5, "DoublePathInitial", 15));
-    autoCommand = new SequentialCommandGroup(
-      new SetDrivePosition(drivetrain, pathA.path.points.get(0)),
+    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner("7PieceFirstNote"));
+    SequentialCommandGroup autoCommand = new SequentialCommandGroup(
+      new SetDrivePosition(drivetrain, pathA.getPath().getStartingPose()),
       new FollowControllers(pathA, drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(0.5, "DoublePathFinal", 15)), drivetrain)
+      new PrintCommand("Staging second path"),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner("7PieceSecondNote")), drivetrain)
     );
+
+    autoChooser.addOption("Example Auto", autoCommand);
+    SmartDashboard.putData(autoChooser);
   }
 
   /**
@@ -66,6 +77,6 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return autoCommand;
+    return autoChooser.getSelected();
   }
 }

@@ -10,7 +10,8 @@
     "types": {
       "/FMSInfo": "FMSInfo",
       "/Shuffleboard/Autonomous/Autonomous": "String Chooser",
-      "/SmartDashboard/Field": "Field2d"
+      "/SmartDashboard/Field": "Field2d",
+      "/SmartDashboard/SendableChooser[0]": "String Chooser"
     },
     "windows": {
       "/SmartDashboard/Field": {
@@ -23,6 +24,11 @@
         "height": 8.229599952697754,
         "image": "C:\\Users\\cwedi\\Downloads\\247f4627b31254ecef02083fa886fe8723be2a83.png",
         "width": 16.459199905395508,
+        "window": {
+          "visible": true
+        }
+      },
+      "/SmartDashboard/SendableChooser[0]": {
         "window": {
           "visible": true
         }
@@ -40,6 +46,17 @@
         "open": true
       },
       "PurePursuit": {
+        "open": true
+      },
+      "Shuffleboard": {
+        "open": true
+      },
+      "SmartDashboard": {
+        "SendableChooser[0]": {
+          "string[]##v_/SmartDashboard/SendableChooser[0]/options": {
+            "open": true
+          }
+        },
         "open": true
       }
     }
@@ -181,7 +198,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -210,7 +227,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -230,7 +247,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -266,7 +283,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -295,7 +312,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -324,7 +341,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 218,
           "series": [
             {
               "color": [

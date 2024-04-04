@@ -4,7 +4,7 @@
   "holonomicMode": true,
   "pathFolders": [
     "7PieceExample",
-    "DoublePathExample"
+    "Example"
   ],
   "autoFolders": [],
   "defaultMaxVel": 5.06,
