@@ -35,8 +35,6 @@ public class PurePursuitDiagnostics {
 
     public static Field2d field = new Field2d();
 
-    static ArrayList<State> previousPositions = new ArrayList<State>();
-
     public PurePursuitDiagnostics(Path path) {
         NetworkTable purePursuitTable = NetworkTableInstance.getDefault().getTable("PurePursuit");
         goalX = purePursuitTable.getDoubleTopic("goalX").getEntry(0);
@@ -92,17 +90,5 @@ public class PurePursuitDiagnostics {
         this.lookAhead.set(lookAhead);
 
         field.setRobotPose(currentPosition);
-
-        ArrayList<State> lookAheadPointStates = new ArrayList<State>();
-        lookAheadPointStates.add(new State(0,0,0,currentPosition,0));
-        lookAheadPointStates.add(new State(0,0,0,goalPosition,0));
-        field.getObject("Lookahead Trajectory").setTrajectory(
-            new Trajectory(lookAheadPointStates)
-        );
-
-        previousPositions.add(new State(0,0,0,currentPosition,0));
-        field.getObject("Previous Positions Trajectory").setTrajectory(
-            new Trajectory(previousPositions)
-        );
     }
 }

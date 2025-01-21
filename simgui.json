@@ -15,30 +15,9 @@
     },
     "windows": {
       "/SmartDashboard/Field": {
-        "Lookahead Trajectory": {
-          "arrows": false,
-          "color": [
-            0.23529410362243652,
-            1.0,
-            0.0,
-            255.0
-          ],
-          "style": "Line"
-        },
         "Path Trajectory": {
           "arrowSize": 0,
           "arrows": false,
-          "style": "Line",
-          "weight": 1.0
-        },
-        "Previous Positions Trajectory": {
-          "arrows": false,
-          "color": [
-            0.0,
-            0.0,
-            0.0,
-            255.0
-          ],
           "style": "Line",
           "weight": 1.0
         },
@@ -219,7 +198,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 307,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -248,7 +227,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 307,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -268,7 +247,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 307,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -304,7 +283,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 307,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -333,7 +312,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 307,
+          "height": 218,
           "series": [
             {
               "color": [
@@ -362,7 +341,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 307,
+          "height": 218,
           "series": [
             {
               "color": [

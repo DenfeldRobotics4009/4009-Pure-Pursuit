@@ -9,11 +9,17 @@ import frc.library.auto.pathing.PurePursuitController;
 import frc.library.auto.pathing.PurePursuitSettings;
 import frc.library.auto.pathing.SetDrivePosition;
 import frc.library.auto.pathing.pathObjects.Path;
+import frc.robot.commands.Drive;
 import frc.robot.subsystems.Drivetrain;
+
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.PathPlannerTrajectory;
+
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -34,22 +40,17 @@ public class RobotContainer {
   public RobotContainer() {
     // Configure the trigger bindings
     configureBindings();
+    drivetrain.setDefaultCommand(new Drive(drivetrain));
+
+    PurePursuitSettings.setLookAheadScalar(0.2);
+    PurePursuitSettings.setDistanceToGoalTolerance(0.1);
 
     PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner("7PieceFirstNote"));
     SequentialCommandGroup autoCommand = new SequentialCommandGroup(
-      new InstantCommand(
-        () -> {
-          PurePursuitSettings.setLookAheadScalar(0.2);
-          PurePursuitSettings.setDistanceToGoalTolerance(0.1);
-        }
-      ),
       new SetDrivePosition(drivetrain, pathA.getPath().getStartingPose()),
       new FollowControllers(pathA, drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner("7PieceSecondNote")), drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner("7PieceThirdNote")), drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner("7PieceFourthNote")), drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner("7PieceFifthNote")), drivetrain),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner("7PieceSixthNote")), drivetrain)
+      new PrintCommand("Staging second path"),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner("7PieceSecondNote")), drivetrain)
     );
 
     autoChooser.addOption("Example Auto", autoCommand);

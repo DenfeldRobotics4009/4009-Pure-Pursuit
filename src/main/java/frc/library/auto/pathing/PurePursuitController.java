@@ -49,10 +49,8 @@ public class PurePursuitController extends Command implements RotationController
      * Print path data
      */
     public void initialize() {
-        lastPosition = null;
         lastCrossedPointIndex = 0;
         lookAheadMeters = 0.4;
-        lastDistanceToGoal = lookAheadMeters;
         diagnostics = new PurePursuitDiagnostics(path);
         rotationController.setPID(PurePursuitSettings.turningP, PurePursuitSettings.turningI, PurePursuitSettings.turningD);
         System.out.println("--- Following path of points: ---");
