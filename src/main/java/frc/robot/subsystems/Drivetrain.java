@@ -54,11 +54,6 @@ public class Drivetrain extends SubsystemBase implements DriveSubsystem {
   }
 
   @Override
-  public void drive(ChassisSpeeds speeds) {
-    velocity = speeds;
-  }
-
-  @Override
   public Pose2d getPosition() {
     return position;
   }
@@ -66,5 +61,14 @@ public class Drivetrain extends SubsystemBase implements DriveSubsystem {
   @Override
   public void setPosition(Pose2d position) {
     this.position = position;
+  }
+
+  @Override
+  public void drive(double xMetersPerSecond, double yMetersPerSecond, double radPerSecond) {
+    velocity = new ChassisSpeeds(xMetersPerSecond, yMetersPerSecond, radPerSecond);
+  }
+
+  public void drive(ChassisSpeeds speeds) {
+    velocity = speeds;
   }
 }

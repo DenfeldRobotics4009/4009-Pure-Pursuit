@@ -109,7 +109,7 @@ public class FollowControllers extends Command {
     );
 
     driveSubsystem.drive(
-      new ChassisSpeeds(poseSpeeds.getX(), poseSpeeds.getY(), poseSpeeds.getRotation().getRadians())
+      poseSpeeds.getX(), poseSpeeds.getY(), poseSpeeds.getRotation().getRadians()
     );
   }
 
