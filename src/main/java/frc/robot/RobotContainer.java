@@ -53,10 +53,6 @@ public class RobotContainer {
     configureBindings();
     drivetrain.setDefaultCommand(new Drive(drivetrain));
 
-    PurePursuitSettings.setLookAheadScalar(0.2);
-    PurePursuitSettings.setDistanceToGoalTolerance(0.1);
-    PurePursuitSettings.setDefaultEndpointTolerance(0.1);
-
     GameField gameField = null;
     try {
       gameField = new GameField(AprilTagFields.k2023ChargedUp, FieldMirrorType.Mirrored);
@@ -65,12 +61,17 @@ public class RobotContainer {
       e.printStackTrace();
     }
 
-    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(gameField, Alliance.Blue, "7PieceFirstNote"));
+    PurePursuitSettings config = new PurePursuitSettings(gameField, Alliance.Blue)
+      .setLookAheadScalar(0.2)
+      .setDistanceToGoalTolerance(0.1)
+      .setDefaultEndpointTolerance(0.1);
+
+    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(config, Alliance.Blue, "7PieceFirstNote"));
     SequentialCommandGroup autoCommand = new SequentialCommandGroup(
       new SetDrivePosition(drivetrain, pathA.getPath().getStartingPoseSupplier()),
       new FollowControllers(pathA, drivetrain),
       new PrintCommand("Staging second path"),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(gameField, Alliance.Blue, "7PieceSecondNote")), drivetrain)
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(config, Alliance.Blue, "7PieceSecondNote")), drivetrain)
     );
 
     autoChooser.addOption("Example Auto", autoCommand);

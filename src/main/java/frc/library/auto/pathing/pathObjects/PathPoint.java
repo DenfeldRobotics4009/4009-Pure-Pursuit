@@ -4,12 +4,9 @@
 
 package frc.library.auto.pathing.pathObjects;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import frc.library.auto.pathing.PurePursuitSettings;
-import frc.library.auto.pathing.field.FieldMirrorType;
 import frc.library.auto.pathing.field.GameField;
 import frc.library.auto.pathing.field.GameFieldPose;
 
@@ -30,9 +27,7 @@ public class PathPoint extends GameFieldPose {
      */
     public PathPoint(GameField field, Translation2d poseMeters, Rotation2d orientation, double speedMetersPerSecond) {
         super(field, poseMeters, orientation);
-
-        // May be overridden
-        this.speedMetersPerSecond = MathUtil.clamp(speedMetersPerSecond, 0, PurePursuitSettings.maxVelocityMeters);
+        this.speedMetersPerSecond = speedMetersPerSecond;
     }
 
     /**
@@ -46,10 +41,6 @@ public class PathPoint extends GameFieldPose {
         this(field, poseMeters.getTranslation(), poseMeters.getRotation(), speedMetersPerSecond);
     }
 
-    /**
-     * Flips the point to the corresponding coordinate position for the opposite alliance.
-     * @return A new point on the opposite side of the field.
-     */
     @Override
     public PathPoint flipAllianceOrigin() {
         return new PathPoint(getField(), super.flipAllianceOrigin(), speedMetersPerSecond);
@@ -61,11 +52,10 @@ public class PathPoint extends GameFieldPose {
     }
 
     /**
-     * 
+     * Interpolates a value between initial and final.
      * @param Initial Initial Value
      * @param Final Final Value
      * @param PercentBetween Position (In Percent) along line starting from 0
-     * 
      * @return Calculated value between Initial and Final 
      * that is on the interpolated line function.
      */
@@ -128,20 +118,6 @@ public class PathPoint extends GameFieldPose {
     }
 
     /**
-     * Clamps an input translation2d into the boundaries specified by the corners
-     * @param cornerA
-     * @param cornerB
-     * @param Input
-     * @return Translation2d within boundaries of corner A and B
-     */
-    public static Translation2d clamp(Translation2d cornerA, Translation2d cornerB, Translation2d Input) {
-        return new Translation2d(
-            nonSpecifiedClamp(cornerA.getX(), cornerB.getX(), Input.getX()),
-            nonSpecifiedClamp(cornerA.getY(), cornerB.getY(), Input.getY())
-        );
-    }
-
-    /**
      * Constructs a new pathPathPoint via
      * interpolating values from this to
      * finalPoint.
@@ -162,6 +138,11 @@ public class PathPoint extends GameFieldPose {
         );
     }
 
+    /**
+     * Gets the distance to the other path point.
+     * @param pathPoint
+     * @return The distance from this path point to the other.
+     */
     public double getDistance(Pose2d pathPoint) {
         return getTranslation().getDistance(pathPoint.getTranslation());
     }

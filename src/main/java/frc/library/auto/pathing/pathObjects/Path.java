@@ -24,7 +24,6 @@ import edu.wpi.first.math.trajectory.TrajectoryUtil;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import frc.library.auto.pathing.PurePursuitController;
 import frc.library.auto.pathing.PurePursuitSettings;
 import frc.library.auto.pathing.field.GameField;
 
@@ -35,12 +34,12 @@ public class Path implements Iterable<PathPoint> {
 
     private ArrayList<PathPoint> points;
     private double lastPointTolerance;
-    private GameField field;
+    public PurePursuitSettings config;
     private Alliance builtAlliance;
 
     /**
      * Subscribes to the alliance color in FMS data.
-     * The complete path is /FMSInfo/IsRedAlliance
+     * The complete path is /FMSInfo/IsRedAlliance.
      */
     private BooleanSubscriber isRedAllianceSubScriber = 
         NetworkTableInstance.getDefault()
@@ -50,19 +49,37 @@ public class Path implements Iterable<PathPoint> {
 
     /**
      * Constructs a path from a path planner file name.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param pathName The path planner file name.
+     * @return A new path that matches the path planner path.
      */
-    public static Path getFromPathPlanner(GameField field, Alliance originAlliance, String pathName) {
+    public static Path getFromPathPlanner(PurePursuitSettings config, Alliance originAlliance, String pathName) {
         PathPlannerPath pathPlannerPath = PathPlannerPath.fromPathFile(pathName);   
         PathPlannerTrajectory trajectory = pathPlannerPath.getTrajectory(
             new ChassisSpeeds(), pathPlannerPath.getPreviewStartingHolonomicPose().getRotation());
-        return new Path(field, originAlliance, trajectory);
+        return new Path(config, originAlliance, trajectory);
+    }
+
+    /**
+     * Constructs a path from a path planner file name.
+     * @param config Configuration for the pure pursuit library.
+     * @param pathName The path planner file name.
+     * @return A new path that matches the path planner path.
+     */
+    public static Path getFromPathPlanner(PurePursuitSettings config, String pathName) {
+        return Path.getFromPathPlanner(config, config.originAlliance, pathName);
     }
 
     /**
      * Constructs a path from a path weaver file name. Paths must be inserted
      * into the src\main\deploy\paths directory
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param pathName The path weaver file name.
+     * @return A new path that matches the path planner path.
      */
-    public static Path getFromPathWeaver(GameField field, Alliance originAlliance, String pathName) {
+    public static Path getFromPathWeaver(PurePursuitSettings config, Alliance originAlliance, String pathName) {
         Trajectory trajectory = new Trajectory();
         try {
             trajectory = TrajectoryUtil.fromPathweaverJson(
@@ -71,75 +88,133 @@ public class Path implements Iterable<PathPoint> {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        return new Path(field, originAlliance, trajectory);
+        return new Path(config, originAlliance, trajectory);
     }
-    
+
     /**
-     * Constructs a path from a given set of points,
-     * 0.02 meters is set as the default end point tolerance
-     * @param Points the first point passed into this 
-     * initializer is the first point along the path.
+     * Constructs a path from a path weaver file name. Paths must be inserted
+     * into the src\main\deploy\paths directory
+     * @param config Configuration for the pure pursuit library.
+     * @param pathName The path weaver file name.
+     * @return A new path that matches the path planner path.
      */
-    public Path(GameField field, Alliance originAlliance, PathPoint... Points) {
-        this(field, originAlliance, PurePursuitSettings.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+    public static Path getFromPathWeaver(PurePursuitSettings config, String pathName) {
+        return getFromPathWeaver(config, config.originAlliance, pathName);
     }
 
     /**
      * Constructs a path from a given set of points,
-     * 0.2 meters is set as the default end point tolerance
-     * @param lastPointTolerance meters, the path will finish
-     * when the robot is within this distance of the last point.
-     * @param Points the first point passed into this 
-     * initializer is the first point along the path.
+     * 0.02 meters is set as the default end point tolerance.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param Points All points along the path, the first point passed 
+     * into this initializer is the first point along the path.
      */
-    public Path(GameField field, Alliance originAlliance, double lastPointTolerance, PathPoint... Points) {
-        this(field, originAlliance, lastPointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+    public Path(PurePursuitSettings config, Alliance originAlliance, PathPoint... Points) {
+        this(config, originAlliance, config.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
     }
 
     /**
-     * Constructs a path given a pure pursuit trajectory.
-     * @param lastPointTolerance meters, the path will finish
-     * when the robot is within this distance of the last point.
-     * @param pathWeaverTrajectory
+     * Constructs a path from a given set of points,
+     * 0.02 meters is set as the default end point tolerance.
+     * @param config Configuration for the pure pursuit library.
+     * @param Points All points along the path, the first point passed 
+     * into this initializer is the first point along the path.
      */
-    public Path(GameField field, Alliance originAlliance, double lastPointTolerance, Trajectory pathWeaverTrajectory) {
+    public Path(PurePursuitSettings config, PathPoint... Points) {
+        this(config, config.originAlliance, config.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+    }
+
+    /**
+     * Constructs a path from a given set of points.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param lastPointTolerance The distance to the last point where the path ends.
+     * @param Points All points along the path, the first point passed 
+     * into this initializer is the first point along the path.
+     */
+    public Path(PurePursuitSettings config, Alliance originAlliance, double lastPointTolerance, PathPoint... Points) {
+        this(config, originAlliance, lastPointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+    }
+
+    /**
+     * Constructs a path from a given set of points.
+     * @param config Configuration for the pure pursuit library.
+     * @param lastPointTolerance The distance to the last point where the path ends.
+     * @param Points All points along the path, the first point passed 
+     * into this initializer is the first point along the path.
+     */
+    public Path(PurePursuitSettings config, double lastPointTolerance, PathPoint... Points) {
+        this(config, config.originAlliance, lastPointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+    }
+
+    /**
+     * Constructs a path given a path weaver trajectory.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param lastPointTolerance The distance to the last point where the path ends.
+     * @param pathWeaverTrajectory The PathWeaver trajectory.
+     */
+    public Path(PurePursuitSettings config, Alliance originAlliance, double lastPointTolerance, Trajectory pathWeaverTrajectory) {
         ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
         for (State state : pathWeaverTrajectory.getStates()) {
-            tempPoints.add(new PathPoint(field, state.poseMeters, state.velocityMetersPerSecond));
+            tempPoints.add(new PathPoint(config.field, state.poseMeters, state.velocityMetersPerSecond));
         }
-        processPoints(field, originAlliance, lastPointTolerance, tempPoints);
+        processPoints(config, originAlliance, lastPointTolerance, tempPoints);
     }
 
     /**
-     * Constructs a path given a pure pursuit trajectory.
-     * @param lastPointTolerance meters, the path will finish
-     * when the robot is within this distance of the last point.
-     * @param pathPlannerTrajectory
+     * Constructs a path given a path planner trajectory.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param lastPointTolerance The distance to the last point where the path ends.
+     * @param pathPlannerTrajectory The PathPlanner trajectory.
      */
-    public Path(GameField field, Alliance originAlliance, double lastPointTolerance, PathPlannerTrajectory pathPlannerTrajectory) {
+    public Path(PurePursuitSettings config, Alliance originAlliance, double lastPointTolerance, PathPlannerTrajectory pathPlannerTrajectory) {
         ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
         for (com.pathplanner.lib.path.PathPlannerTrajectory.State state : pathPlannerTrajectory.getStates()) {
-            tempPoints.add(new PathPoint(field, state.positionMeters, state.targetHolonomicRotation, state.velocityMps));
+            tempPoints.add(new PathPoint(config.field, state.positionMeters, state.targetHolonomicRotation, state.velocityMps));
         }
-        processPoints(field, originAlliance, lastPointTolerance, tempPoints);
+        processPoints(config, originAlliance, lastPointTolerance, tempPoints);
     }
 
     /**
-     * Constructs a path given a pure pursuit trajectory,
-     * 0.2 meters is set as the default end point tolerance.
-     * @param pathPlannerTrajectory
+     * Constructs a path given a path weaver trajectory.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param pathWeaverTrajectory The PathWeaver trajectory.
      */
-    public Path(GameField field, Alliance originAlliance, Trajectory pathWeaverTrajectory) {
-        this(field, originAlliance, PurePursuitSettings.endpointTolerance, pathWeaverTrajectory);
+    public Path(PurePursuitSettings config, Alliance originAlliance, Trajectory pathWeaverTrajectory) {
+        this(config, originAlliance, config.endpointTolerance, pathWeaverTrajectory);
     }
 
     /**
-     * Constructs a path given a pure pursuit trajectory,
-     * 0.2 meters is set as the default end point tolerance.
-     * @param pathPlannerTrajectory
+     * Constructs a path given a path weaver trajectory.
+     * @param config Configuration for the pure pursuit library.
+     * @param pathWeaverTrajectory The PathWeaver trajectory.
      */
-    public Path(GameField field, Alliance originAlliance, PathPlannerTrajectory pathPlannerTrajectory) {
-        this(field, originAlliance, PurePursuitSettings.endpointTolerance, pathPlannerTrajectory);
+    public Path(PurePursuitSettings config, Trajectory pathWeaverTrajectory) {
+        this(config, config.originAlliance, config.endpointTolerance, pathWeaverTrajectory);
+    }
+
+    /**
+     * Constructs a path given a path planner trajectory.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param pathWeaverTrajectory The PathPlanner trajectory.
+     */
+    public Path(PurePursuitSettings config, Alliance originAlliance, PathPlannerTrajectory pathPlannerTrajectory) {
+        this(config, originAlliance, config.endpointTolerance, pathPlannerTrajectory);
+    }
+
+    /**
+     * Constructs a path given a path planner trajectory.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param pathWeaverTrajectory The PathPlanner trajectory.
+     */
+    public Path(PurePursuitSettings config, PathPlannerTrajectory pathPlannerTrajectory) {
+        this(config, config.originAlliance, config.endpointTolerance, pathPlannerTrajectory);
     }
 
     /**
@@ -148,24 +223,25 @@ public class Path implements Iterable<PathPoint> {
      * into this initializer is the first point along the path.
      * @param lastPointTolerance double in meters
      */
-    public Path(GameField field, Alliance originAlliance, double lastPointTolerance, ArrayList<PathPoint> Points) {
-        processPoints(field, originAlliance, lastPointTolerance, Points);
+    public Path(PurePursuitSettings config, Alliance originAlliance, double lastPointTolerance, ArrayList<PathPoint> Points) {
+        processPoints(config, originAlliance, lastPointTolerance, Points);
     }
 
     /**
-     * 
-     * @param field
-     * @param originAlliance
-     * @param lastPointTolerance
-     * @param Points
+     * Processes points to ensure the path is physically drivable.
+     * @param config Configuration for the pure pursuit library.
+     * @param originAlliance The alliance this path is built for.
+     * @param lastPointTolerance The distance to the last point where the path ends.
+     * @param points All points along the path, the first point passed 
+     * into this initializer is the first point along the path.
      */
-    void processPoints(GameField field, Alliance originAlliance, double lastPointTolerance, ArrayList<PathPoint> points) {
+    void processPoints(PurePursuitSettings config, Alliance originAlliance, double lastPointTolerance, ArrayList<PathPoint> points) {
         System.out.println();
 
         System.out.println("Processing path " + this.toString());
-        this.field = field;
+        this.config = config;
         this.lastPointTolerance = lastPointTolerance;
-        this.builtAlliance = originAlliance;
+        this.builtAlliance = config.originAlliance;
         this.points = points;
 
         if (!isValid()) {
@@ -178,7 +254,7 @@ public class Path implements Iterable<PathPoint> {
 
         // Increment rotation of each point by the forward direction angle
         for (int index = 0; index < points.size(); index++) {
-            pointsCopy.set(index, points.get(index).rotateBy(PurePursuitSettings.forwardAngle));
+            pointsCopy.set(index, points.get(index).rotateBy(config.forwardAngle));
         }
 
         // Parse backward to correct speed of points
@@ -193,37 +269,35 @@ public class Path implements Iterable<PathPoint> {
             double deceleration = -(deltaS / deltaD);
 
             // Calculate lookahead for deceleration point offset
-            double lookAheadMeters = PurePursuitController.calculateLookAhead(
-                previousPoint.speedMetersPerSecond
-            );
+            double lookAheadMeters = calculateLookAhead(previousPoint.speedMetersPerSecond);
 
             // Pull max deceleration from constants
-            if (deceleration > PurePursuitSettings.maxAccelerationMeters) {
+            if (deceleration > config.maxAccelerationMeters) {
 
                 // Clamp speed
                 double previousSpeed = previousPoint.speedMetersPerSecond;
                 // This index will remain unaffected
                 points.get(i-1).speedMetersPerSecond = 
-                    point.speedMetersPerSecond + deltaD*PurePursuitSettings.maxAccelerationMeters;
+                    point.speedMetersPerSecond + deltaD * config.maxAccelerationMeters;
                 System.out.println(
                     "Clamped speed from " + previousSpeed + " to " + 
                     previousPoint.speedMetersPerSecond
                 );
 
             } else if (
-                deceleration < PurePursuitSettings.maxAccelerationMeters && 
+                deceleration < config.maxAccelerationMeters && 
                 deltaS < 0 && 
                 (
-                    1 + (deltaS / (PurePursuitSettings.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD) > 0
+                    1 + (deltaS / (config.maxAccelerationMeters * deltaD) - lookAheadMeters/deltaD) > 0
                     || i == pointsCopy.size()-1 // Ignore the above if we are checking the last point
                 )
             ) {
 
                 // Insert new point
                 // Normalized, deltaS / Swerve.MaxAccelerationMeters is negative
-                double percentFromLastPoint =  1 + (deltaS / (PurePursuitSettings.maxAccelerationMeters * deltaD));
+                double percentFromLastPoint =  1 + (deltaS / (config.maxAccelerationMeters * deltaD));
                 if (i != pointsCopy.size()-1) {
-                    percentFromLastPoint -= lookAheadMeters/deltaD;
+                    percentFromLastPoint -= lookAheadMeters / deltaD;
                 }
                 System.out.println(
                     "Inserted new point at index " + i + " at " + percentFromLastPoint*100 + "%");
@@ -235,13 +309,6 @@ public class Path implements Iterable<PathPoint> {
                 points.add(i, insertedPoint);
             }
         }
-
-        // Parse through point and print data
-        // for (int i = 0; i < points.size(); i++) {
-        //     System.out.print("Point " + i);
-        //     System.out.print(" - " + new Pose2d(points.get(i).getTranslation(), points.get(i).getRotation()));
-        //     System.out.println(" - " + points.get(i).speedMetersPerSecond + " meters/sec");
-        // }
 
         System.out.println();
 
@@ -276,6 +343,10 @@ public class Path implements Iterable<PathPoint> {
         );
     }
 
+    public double calculateLookAhead(double speed) {
+        return MathUtil.clamp(speed * config.lookAheadScalar, 0.1, 2);
+    }
+
     /**
      * Mutator, Flips all points to the corresponding coordinate position for the opposite alliance.
      * @return This path.
@@ -285,6 +356,14 @@ public class Path implements Iterable<PathPoint> {
         for (PathPoint point : this) {
             flippedPoints.add(point.flipAllianceOrigin());
         }
+        
+        // Flip the built alliance
+        if (builtAlliance.equals(Alliance.Red)) {
+            builtAlliance = Alliance.Blue;
+        } else {
+            builtAlliance = Alliance.Red;
+        }
+
         this.points = flippedPoints;
         return this;
     }
@@ -332,22 +411,29 @@ public class Path implements Iterable<PathPoint> {
     }
 
     /**
-     * @return PathPoint of the first point on the path.
-     */
-    public PathPoint getStartingPose() {
-        return get(0);
-    }
-
-    /**
      * @return A supplier resolved with the first point on the path
      */
     public Supplier<Pose2d> getStartingPoseSupplier() {
         return new Supplier<Pose2d>() {
             @Override
             public Pose2d get() {
-                return getStartingPose();
+                return first();
             }
         };
+    }
+
+    /**
+     * @return The first point on the path.
+     */
+    public PathPoint first() {
+        return get(0);
+    }
+
+    /**
+     * @return The last point on the path.
+     */
+    public PathPoint last() {
+        return get(size() - 1);
     }
 
     /**
@@ -361,7 +447,7 @@ public class Path implements Iterable<PathPoint> {
      * @return The field this path was constructed on.
      */
     public GameField getField() {
-        return field;
+        return config.field;
     }
 
     /**

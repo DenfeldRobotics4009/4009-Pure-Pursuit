@@ -33,13 +33,12 @@ public class PurePursuitController extends Command implements RotationController
     PIDController rotationController;
 
     PurePursuitDiagnostics diagnostics;
-
     double lastDistanceToGoal = lookAheadMeters;
 
     public PurePursuitController(Path path) {
         this.path = path;
         rotationController = 
-            new PIDController(PurePursuitSettings.turningP, PurePursuitSettings.turningI, PurePursuitSettings.turningD);
+            new PIDController(path.config.turningP, path.config.turningI, path.config.turningD);
         rotationController.enableContinuousInput(-Math.PI, Math.PI);
     }
 
@@ -52,7 +51,7 @@ public class PurePursuitController extends Command implements RotationController
         lastCrossedPointIndex = 0;
         lookAheadMeters = 0.4;
         diagnostics = new PurePursuitDiagnostics(path);
-        rotationController.setPID(PurePursuitSettings.turningP, PurePursuitSettings.turningI, PurePursuitSettings.turningD);
+        rotationController.setPID(path.config.turningP, path.config.turningI, path.config.turningD);
         System.out.println("--- Following path of points: ---");
         for (PathPoint point : path) {
             System.out.println(point.getTranslation() + "," + point.getRotation());
@@ -93,7 +92,7 @@ public class PurePursuitController extends Command implements RotationController
         }
 
         // calculate distance to last point
-        double distanceToLastPointMeters = getLastPoint().getDistance(lastPosition);
+        double distanceToLastPointMeters = path.last().getDistance(lastPosition);
 
         return (
             // If we have passed the second to last point
@@ -104,12 +103,7 @@ public class PurePursuitController extends Command implements RotationController
 
     // private static double clampStateSpeed(double stateSpeed) {
     //     return MathUtil.clamp(stateSpeed, 0.1, PurePursuitSettings.maxVelocityMeters);
-    // }
-
-    public static double calculateLookAhead(double speed) {
-        // double clampedSpeed = clampStateSpeed(speed);
-        return MathUtil.clamp(speed * PurePursuitSettings.lookAheadScalar, 0.1, 2);
-    }
+    // 
 
     ChassisSpeeds getSpeeds(Pose2d robotPosition) {
 
@@ -127,7 +121,7 @@ public class PurePursuitController extends Command implements RotationController
         Translation2d axisSpeeds = new Translation2d(state.speedMetersPerSecond, deltaLocation.getAngle());
 
         // Set lookahead based upon speed of next point
-        lookAheadMeters = calculateLookAhead(state.speedMetersPerSecond);
+        lookAheadMeters = path.calculateLookAhead(state.speedMetersPerSecond);
 
         lastDistanceToGoal = state.goalPose.getTranslation().getDistance(robotPosition.getTranslation());
 
@@ -294,7 +288,7 @@ public class PurePursuitController extends Command implements RotationController
             System.out.println("Increment last crossed point index to " + lastCrossedPointIndex);
         }
 
-        if (lastDistanceToGoal < PurePursuitSettings.distanceToGoalTolerance) {
+        if (lastDistanceToGoal < path.config.distanceToGoalTolerance) {
             lastCrossedPointIndex ++;
             DriverStation.reportWarning("Forced incrementation of last crossed point index", false);
             System.out.println("Increment last crossed point index to " + lastCrossedPointIndex);
@@ -304,10 +298,6 @@ public class PurePursuitController extends Command implements RotationController
         diagnostics.publishEntry(state.goalPose, robotPosition, state.speedMetersPerSecond, lastCrossedPointIndex, percentAlongAB, lookAheadMeters);
 
         return state;
-    }
-
-    PathPoint getLastPoint() {
-        return path.getPoints().get(path.size() - 1);
     }
 
     /**
