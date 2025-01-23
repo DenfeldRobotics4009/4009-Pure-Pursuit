@@ -55,6 +55,7 @@ public class RobotContainer {
 
     PurePursuitSettings.setLookAheadScalar(0.2);
     PurePursuitSettings.setDistanceToGoalTolerance(0.1);
+    PurePursuitSettings.setDefaultEndpointTolerance(0.1);
 
     GameField gameField = null;
     try {
