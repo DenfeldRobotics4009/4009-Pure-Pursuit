@@ -6,6 +6,8 @@ package frc.library.auto.pathing;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.DriverStation;
+import frc.library.auto.pathing.field.FieldMirrorType;
 
 public class PurePursuitSettings {
     private PurePursuitSettings() {}
@@ -25,6 +27,8 @@ public class PurePursuitSettings {
     // If the robot comes this close to its goal, it will increment 
     // the last crossed point index.
     public static double distanceToGoalTolerance = endpointTolerance * 0.5;    
+    // The method of which paths are flipped.
+    public static FieldMirrorType fieldMirrorType = FieldMirrorType.Mirrored;
 
     /**
      * Configures the PID components of the steering
@@ -95,5 +99,13 @@ public class PurePursuitSettings {
      */
     public static void setDistanceToGoalTolerance(double tolerance) {
         PurePursuitSettings.distanceToGoalTolerance = MathUtil.clamp(tolerance, 0, 1);
+    }
+
+    /**
+     * Sets the method that paths are flipped to the opposite alliance.
+     * @param fieldMirrorType
+     */
+    public static void setFieldMirrorType(FieldMirrorType fieldMirrorType) {
+        PurePursuitSettings.fieldMirrorType = fieldMirrorType;
     }
 }

@@ -8,51 +8,70 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.function.Supplier;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.Trajectory.State;
+import edu.wpi.first.networktables.BooleanSubscriber;
+import edu.wpi.first.networktables.NetworkTableEvent;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.math.trajectory.TrajectoryUtil;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.library.auto.pathing.PurePursuitController;
 import frc.library.auto.pathing.PurePursuitSettings;
+import frc.library.auto.pathing.field.GameField;
 
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.path.PathPlannerTrajectory;
 
-public class Path {
+public class Path implements Iterable<PathPoint> {
 
-    public ArrayList<PathPoint> points;
+    private ArrayList<PathPoint> points;
+    private double lastPointTolerance;
+    private GameField field;
+    private Alliance builtAlliance;
 
-    public double lastPointTolerance;
+    /**
+     * Subscribes to the alliance color in FMS data.
+     * The complete path is /FMSInfo/IsRedAlliance
+     */
+    private BooleanSubscriber isRedAllianceSubScriber = 
+        NetworkTableInstance.getDefault()
+            .getTable("FMSInfo")
+            .getBooleanTopic("IsRedAlliance")
+            .subscribe(false);
 
     /**
      * Constructs a path from a path planner file name.
      */
-    public static Path getFromPathPlanner(String pathName) {
+    public static Path getFromPathPlanner(GameField field, Alliance originAlliance, String pathName) {
         PathPlannerPath pathPlannerPath = PathPlannerPath.fromPathFile(pathName);   
         PathPlannerTrajectory trajectory = pathPlannerPath.getTrajectory(
             new ChassisSpeeds(), pathPlannerPath.getPreviewStartingHolonomicPose().getRotation());
-        return new Path(trajectory);
+        return new Path(field, originAlliance, trajectory);
     }
 
     /**
      * Constructs a path from a path weaver file name. Paths must be inserted
      * into the src\main\deploy\paths directory
      */
-    public static Path getFromPathWeaver(String pathName) {
-            Trajectory trajectory = new Trajectory();
-            try {
-                trajectory = TrajectoryUtil.fromPathweaverJson(
-                    Filesystem.getDeployDirectory().toPath().resolve("paths/" + pathName)
-                );
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-            return new Path(trajectory);
+    public static Path getFromPathWeaver(GameField field, Alliance originAlliance, String pathName) {
+        Trajectory trajectory = new Trajectory();
+        try {
+            trajectory = TrajectoryUtil.fromPathweaverJson(
+                Filesystem.getDeployDirectory().toPath().resolve("paths/" + pathName)
+            );
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return new Path(field, originAlliance, trajectory);
     }
     
     /**
@@ -61,8 +80,8 @@ public class Path {
      * @param Points the first point passed into this 
      * initializer is the first point along the path.
      */
-    public Path(PathPoint... Points) {
-        this(PurePursuitSettings.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+    public Path(GameField field, Alliance originAlliance, PathPoint... Points) {
+        this(field, originAlliance, PurePursuitSettings.endpointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
     }
 
     /**
@@ -73,8 +92,8 @@ public class Path {
      * @param Points the first point passed into this 
      * initializer is the first point along the path.
      */
-    public Path(double lastPointTolerance, PathPoint... Points) {
-        this(lastPointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
+    public Path(GameField field, Alliance originAlliance, double lastPointTolerance, PathPoint... Points) {
+        this(field, originAlliance, lastPointTolerance, new ArrayList<PathPoint>(Arrays.asList(Points)));
     }
 
     /**
@@ -83,12 +102,12 @@ public class Path {
      * when the robot is within this distance of the last point.
      * @param pathWeaverTrajectory
      */
-    public Path(double lastPointTolerance, Trajectory pathWeaverTrajectory) {
+    public Path(GameField field, Alliance originAlliance, double lastPointTolerance, Trajectory pathWeaverTrajectory) {
         ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
         for (State state : pathWeaverTrajectory.getStates()) {
-            tempPoints.add(new PathPoint(state.poseMeters, state.velocityMetersPerSecond));
+            tempPoints.add(new PathPoint(field, state.poseMeters, state.velocityMetersPerSecond));
         }
-        process(lastPointTolerance, tempPoints);
+        processPoints(field, originAlliance, lastPointTolerance, tempPoints);
     }
 
     /**
@@ -97,12 +116,12 @@ public class Path {
      * when the robot is within this distance of the last point.
      * @param pathPlannerTrajectory
      */
-    public Path(double lastPointTolerance, PathPlannerTrajectory pathPlannerTrajectory) {
+    public Path(GameField field, Alliance originAlliance, double lastPointTolerance, PathPlannerTrajectory pathPlannerTrajectory) {
         ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
         for (com.pathplanner.lib.path.PathPlannerTrajectory.State state : pathPlannerTrajectory.getStates()) {
-            tempPoints.add(new PathPoint(state.positionMeters, state.targetHolonomicRotation, state.velocityMps));
+            tempPoints.add(new PathPoint(field, state.positionMeters, state.targetHolonomicRotation, state.velocityMps));
         }
-        process(lastPointTolerance, tempPoints);
+        processPoints(field, originAlliance, lastPointTolerance, tempPoints);
     }
 
     /**
@@ -110,8 +129,8 @@ public class Path {
      * 0.2 meters is set as the default end point tolerance.
      * @param pathPlannerTrajectory
      */
-    public Path(Trajectory pathWeaverTrajectory) {
-        this(PurePursuitSettings.endpointTolerance, pathWeaverTrajectory);
+    public Path(GameField field, Alliance originAlliance, Trajectory pathWeaverTrajectory) {
+        this(field, originAlliance, PurePursuitSettings.endpointTolerance, pathWeaverTrajectory);
     }
 
     /**
@@ -119,8 +138,8 @@ public class Path {
      * 0.2 meters is set as the default end point tolerance.
      * @param pathPlannerTrajectory
      */
-    public Path(PathPlannerTrajectory pathPlannerTrajectory) {
-        this(PurePursuitSettings.endpointTolerance, pathPlannerTrajectory);
+    public Path(GameField field, Alliance originAlliance, PathPlannerTrajectory pathPlannerTrajectory) {
+        this(field, originAlliance, PurePursuitSettings.endpointTolerance, pathPlannerTrajectory);
     }
 
     /**
@@ -129,46 +148,39 @@ public class Path {
      * into this initializer is the first point along the path.
      * @param lastPointTolerance double in meters
      */
-    public Path(double lastPointTolerance, ArrayList<PathPoint> Points) {
-        process(lastPointTolerance, Points);
+    public Path(GameField field, Alliance originAlliance, double lastPointTolerance, ArrayList<PathPoint> Points) {
+        processPoints(field, originAlliance, lastPointTolerance, Points);
     }
 
-    void process(double lastPointTolerance, ArrayList<PathPoint> Points) {
+    /**
+     * 
+     * @param field
+     * @param originAlliance
+     * @param lastPointTolerance
+     * @param Points
+     */
+    void processPoints(GameField field, Alliance originAlliance, double lastPointTolerance, ArrayList<PathPoint> points) {
         System.out.println();
 
         System.out.println("Processing path " + this.toString());
-
-        // // Flip all points to the corresponding side
-        // if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red) {
-        //     System.out.println("Flipping point coordinates to red alliance");
-        //     for (PathPoint pathPoint : Points) {
-        //         Pose2d flippedPoint = Field.mirrorPoint(new Pose2d(pathPoint.posMeters, pathPoint.orientation));
-        //         pathPoint.posMeters = flippedPoint.getTranslation();
-        //         pathPoint.orientation = flippedPoint.getRotation();
-        //     }
-        // } else {
-        //     System.out.println("Assuming blue alliance");
-        // }
-
+        this.field = field;
         this.lastPointTolerance = lastPointTolerance;
-        points = Points;
+        this.builtAlliance = originAlliance;
+        this.points = points;
 
         if (!isValid()) {
             DriverStation.reportError("Malformed path: A path cannot be formed with less than three points.", true);
             return;
         }
 
+        // Parse through a copy, as the original is being edited
+        ArrayList<PathPoint> pointsCopy = new ArrayList<PathPoint>(points);
+
         // Increment rotation of each point by the forward direction angle
-        for (PathPoint pathPoint : Points) {
-            pathPoint = new PathPoint(
-                pathPoint.getTranslation(), 
-                pathPoint.getRotation().plus(PurePursuitSettings.forwardAngle), 
-                pathPoint.speedMetersPerSecond
-            );
+        for (int index = 0; index < points.size(); index++) {
+            pointsCopy.set(index, points.get(index).rotateBy(PurePursuitSettings.forwardAngle));
         }
 
-        // Parse through a copy, as the original is being edited
-        ArrayList<PathPoint> pointsCopy = new ArrayList<PathPoint>(Points);
         // Parse backward to correct speed of points
         // Parse from back, end at the first
         for (int i = pointsCopy.size()-1; i > 0; i--) {
@@ -191,7 +203,7 @@ public class Path {
                 // Clamp speed
                 double previousSpeed = previousPoint.speedMetersPerSecond;
                 // This index will remain unaffected
-                Points.get(i-1).speedMetersPerSecond = 
+                points.get(i-1).speedMetersPerSecond = 
                     point.speedMetersPerSecond + deltaD*PurePursuitSettings.maxAccelerationMeters;
                 System.out.println(
                     "Clamped speed from " + previousSpeed + " to " + 
@@ -225,13 +237,56 @@ public class Path {
         }
 
         // Parse through point and print data
-        for (int i = 0; i < points.size(); i++) {
-            System.out.print("Point " + i);
-            System.out.print(" - " + new Pose2d(points.get(i).getTranslation(), points.get(i).getRotation()));
-            System.out.println(" - " + points.get(i).speedMetersPerSecond + " meters/sec");
-        }
+        // for (int i = 0; i < points.size(); i++) {
+        //     System.out.print("Point " + i);
+        //     System.out.print(" - " + new Pose2d(points.get(i).getTranslation(), points.get(i).getRotation()));
+        //     System.out.println(" - " + points.get(i).speedMetersPerSecond + " meters/sec");
+        // }
 
         System.out.println();
+
+        // Start listening to changes in alliance color
+        listenToAlliance();
+    }
+
+    /**
+     * Start listening to changes in the alliance color, this function should be called once path
+     * processing should be finished.
+     * 
+     * Immediately after this function is called, the alliance this path is build for is validated
+     * and if incorrect, processing will occur again. If the /FMSInfo/IsRedAlliance network table 
+     * is altered after this function has finished, processing will occur again.
+     */
+    void listenToAlliance() {
+        // Check immediately, who knows what happened before this was called
+        if (isRedAllianceSubScriber.get() != (builtAlliance.equals(Alliance.Red))) {
+            flipAllianceOrigin();
+        }
+        
+        NetworkTableInstance.getDefault().addListener(
+            isRedAllianceSubScriber,
+            EnumSet.of(NetworkTableEvent.Kind.kValueAll),
+            event -> {
+                // Called when the FMS alliance changes, if this ever happens,
+                // rebuild this path via the process function.
+                // Is red alliance
+                System.out.println("Switched alliance color to " + event.valueData.value.getBoolean());
+                flipAllianceOrigin();
+            }
+        );
+    }
+
+    /**
+     * Mutator, Flips all points to the corresponding coordinate position for the opposite alliance.
+     * @return This path.
+     */
+    Path flipAllianceOrigin() {
+        ArrayList<PathPoint> flippedPoints = new ArrayList<PathPoint>();
+        for (PathPoint point : this) {
+            flippedPoints.add(point.flipAllianceOrigin());
+        }
+        this.points = flippedPoints;
+        return this;
     }
 
     /**
@@ -246,15 +301,103 @@ public class Path {
         return true;
     }
 
+    /**
+     * @return ArrayList<Pose2d> of all points in the path.
+     */
     public ArrayList<Pose2d> getPose2ds() {
         return new ArrayList<Pose2d>(points);
     }
 
+    /**
+     * @return ArrayList<PathPoint> of all points in the path.
+     */
+    public ArrayList<PathPoint> getPoints() {
+        return points;
+    }
+
+    /**
+     * Sets the distance in meters from the last point before the path ends.
+     * @param lastPointTolerance The distance in meters from the last point before
+     * the path ends.
+     */
     public void setLastPointTolerance(double lastPointTolerance) {
         this.lastPointTolerance = MathUtil.clamp(lastPointTolerance, 0, 10);
     }
 
-    public Pose2d getStartingPose() {
-        return getPose2ds().get(0);
+    /**
+     * @return Distance in meters from the last point before the path ends.
+     */
+    public double getLastPointTolerance() {
+        return this.lastPointTolerance;
+    }
+
+    /**
+     * @return PathPoint of the first point on the path.
+     */
+    public PathPoint getStartingPose() {
+        return get(0);
+    }
+
+    /**
+     * @return A supplier resolved with the first point on the path
+     */
+    public Supplier<Pose2d> getStartingPoseSupplier() {
+        return new Supplier<Pose2d>() {
+            @Override
+            public Pose2d get() {
+                return getStartingPose();
+            }
+        };
+    }
+
+    /**
+     * @return The alliance this path was constructed for.
+     */
+    public Alliance getAlliance() {
+        return builtAlliance;
+    }
+
+    /**
+     * @return The field this path was constructed on.
+     */
+    public GameField getField() {
+        return field;
+    }
+
+    /**
+     * @return Number of points in the path.
+     */
+    public int size() {
+        return points.size();
+    }
+
+    /**
+     * Returns the PathPoint at index.
+     * @param index The index of the PathPoint.
+     * @return PathPoint at index.
+     */
+    public PathPoint get(int index) {
+        return points.get(index);
+    }
+
+    /**
+     * Creates an iterator through all points along this path.
+     * @return A new Iterator<PathPoint>
+     */
+    @Override
+    public Iterator<PathPoint> iterator() {
+        return new Iterator<PathPoint>() {
+            int index = 0;
+
+            @Override
+            public boolean hasNext() {
+                return index < (points.size() - 1);
+            }
+
+            @Override
+            public PathPoint next() {
+                return points.get(index++);
+            }
+        };
     }
 } 

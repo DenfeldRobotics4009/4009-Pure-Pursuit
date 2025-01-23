@@ -9,11 +9,14 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import frc.library.auto.pathing.PurePursuitSettings;
+import frc.library.auto.pathing.field.FieldMirrorType;
+import frc.library.auto.pathing.field.GameField;
+import frc.library.auto.pathing.field.GameFieldPose;
 
 /**
  * A point along a Path
  */
-public class PathPoint extends Pose2d {
+public class PathPoint extends GameFieldPose {
 
     public double speedMetersPerSecond; // Corrected by path constructor
 
@@ -25,8 +28,8 @@ public class PathPoint extends Pose2d {
      * @param orientation The goal orientation of the robot when it reaches this point
      * @param speedMetersPerSecond The speed the robot should travel THROUGH this point
      */
-    public PathPoint(Translation2d poseMeters, Rotation2d orientation, double speedMetersPerSecond) {
-        super(poseMeters, orientation);
+    public PathPoint(GameField field, Translation2d poseMeters, Rotation2d orientation, double speedMetersPerSecond) {
+        super(field, poseMeters, orientation);
 
         // May be overridden
         this.speedMetersPerSecond = MathUtil.clamp(speedMetersPerSecond, 0, PurePursuitSettings.maxVelocityMeters);
@@ -39,9 +42,24 @@ public class PathPoint extends Pose2d {
      * @param posMeters Position of point on the field in meters
      * @param speedMetersPerSecond The speed the robot should travel THROUGH this point
      */
-    public PathPoint(Pose2d poseMeters, double speedMetersPerSecond) {
-        this(poseMeters.getTranslation(), poseMeters.getRotation(), speedMetersPerSecond);
+    public PathPoint(GameField field, Pose2d poseMeters, double speedMetersPerSecond) {
+        this(field, poseMeters.getTranslation(), poseMeters.getRotation(), speedMetersPerSecond);
     }
+
+    /**
+     * Flips the point to the corresponding coordinate position for the opposite alliance.
+     * @return A new point on the opposite side of the field.
+     */
+    @Override
+    public PathPoint flipAllianceOrigin() {
+        return new PathPoint(getField(), super.flipAllianceOrigin(), speedMetersPerSecond);
+    }
+
+    @Override
+    public PathPoint rotateBy(Rotation2d other) {
+        return new PathPoint(getField(), super.rotateBy(other), speedMetersPerSecond);
+    }
+
     /**
      * 
      * @param Initial Initial Value
@@ -133,6 +151,7 @@ public class PathPoint extends Pose2d {
      */
     public PathPoint interpolate(PathPoint finalPoint, double t) {
         return new PathPoint(
+            getField(),
             // Position
             getTranslation().interpolate(finalPoint.getTranslation(), t), 
             // Rotation

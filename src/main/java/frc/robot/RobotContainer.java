@@ -8,14 +8,25 @@ import frc.library.auto.pathing.FollowControllers;
 import frc.library.auto.pathing.PurePursuitController;
 import frc.library.auto.pathing.PurePursuitSettings;
 import frc.library.auto.pathing.SetDrivePosition;
+import frc.library.auto.pathing.field.FieldMirrorType;
+import frc.library.auto.pathing.field.GameField;
 import frc.library.auto.pathing.pathObjects.Path;
 import frc.robot.commands.Drive;
 import frc.robot.subsystems.Drivetrain;
 
+import java.io.IOException;
+import java.util.EnumSet;
+
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.path.PathPlannerTrajectory;
 
+import edu.wpi.first.apriltag.AprilTag;
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.networktables.NetworkTableEvent;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -45,12 +56,20 @@ public class RobotContainer {
     PurePursuitSettings.setLookAheadScalar(0.2);
     PurePursuitSettings.setDistanceToGoalTolerance(0.1);
 
-    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner("7PieceFirstNote"));
+    GameField gameField = null;
+    try {
+      gameField = new GameField(AprilTagFields.k2023ChargedUp, FieldMirrorType.Mirrored);
+    } catch (IOException e) {
+      // AprilTagFields file not found
+      e.printStackTrace();
+    }
+
+    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(gameField, Alliance.Blue, "7PieceFirstNote"));
     SequentialCommandGroup autoCommand = new SequentialCommandGroup(
-      new SetDrivePosition(drivetrain, pathA.getPath().getStartingPose()),
+      new SetDrivePosition(drivetrain, pathA.getPath().getStartingPoseSupplier()),
       new FollowControllers(pathA, drivetrain),
       new PrintCommand("Staging second path"),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner("7PieceSecondNote")), drivetrain)
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(gameField, Alliance.Blue, "7PieceSecondNote")), drivetrain)
     );
 
     autoChooser.addOption("Example Auto", autoCommand);

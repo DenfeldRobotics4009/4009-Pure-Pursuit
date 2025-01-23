@@ -54,7 +54,9 @@ public class PurePursuitController extends Command implements RotationController
         diagnostics = new PurePursuitDiagnostics(path);
         rotationController.setPID(PurePursuitSettings.turningP, PurePursuitSettings.turningI, PurePursuitSettings.turningD);
         System.out.println("--- Following path of points: ---");
-        for (PathPoint point : path.points) {System.out.println(point.getTranslation() + "," + point.getRotation());}
+        for (PathPoint point : path) {
+            System.out.println(point.getTranslation() + "," + point.getRotation());
+        }
         System.out.println("--- --- --- -- --- -- --- --- ---");
     }
 
@@ -95,8 +97,8 @@ public class PurePursuitController extends Command implements RotationController
 
         return (
             // If we have passed the second to last point
-            lastCrossedPointIndex >= (path.points.size() - 2) && 
-            distanceToLastPointMeters < path.lastPointTolerance
+            lastCrossedPointIndex >= (path.size() - 2) && 
+            distanceToLastPointMeters < path.getLastPointTolerance()
         );
     }
 
@@ -156,16 +158,16 @@ public class PurePursuitController extends Command implements RotationController
         // Parse lookahead
         while (true) {
             // Check to make sure points are accessible
-            if (lastCrossedPointIndex + pointsLookingAhead + 1 >= path.points.size()) {
+            if (lastCrossedPointIndex + pointsLookingAhead + 1 >= path.size()) {
                 // We are looking to the end of path
-                gotoGoal = path.points.get(path.points.size()-1).getTranslation();
+                gotoGoal = path.get(path.size()-1).getTranslation();
                 //println(gotoGoal);
                 break;
             }
             
             // Grab 2 points, and grab the length between them
-            PathPoint lookAheadPointA = path.points.get(lastCrossedPointIndex + pointsLookingAhead);
-            PathPoint lookAheadPointB = path.points.get(lastCrossedPointIndex + pointsLookingAhead + 1);
+            PathPoint lookAheadPointA = path.get(lastCrossedPointIndex + pointsLookingAhead);
+            PathPoint lookAheadPointB = path.get(lastCrossedPointIndex + pointsLookingAhead + 1);
 
             double lookAheadLineLength = lookAheadPointA.getDistance(lookAheadPointB);
 
@@ -229,16 +231,16 @@ public class PurePursuitController extends Command implements RotationController
         // Parse lookahead
         while (true) {
             // Check to make sure points are accessible
-            if (lastCrossedPointIndex + pointsLookingAhead + 1 >= path.points.size()) {
+            if (lastCrossedPointIndex + pointsLookingAhead + 1 >= path.size()) {
                 // We are looking to the end of path
-                gotoGoal = path.points.get(path.points.size()-1).getTranslation();
+                gotoGoal = path.get(path.size()-1).getTranslation();
                 //println(gotoGoal);
                 break;
             }
             
             // Grab 2 points, and grab the length between them
-            PathPoint lookAheadPointA = path.points.get(lastCrossedPointIndex + pointsLookingAhead);
-            PathPoint lookAheadPointB = path.points.get(lastCrossedPointIndex + pointsLookingAhead + 1);
+            PathPoint lookAheadPointA = path.get(lastCrossedPointIndex + pointsLookingAhead);
+            PathPoint lookAheadPointB = path.get(lastCrossedPointIndex + pointsLookingAhead + 1);
 
             double lookAheadLineLength = lookAheadPointA.getDistance(lookAheadPointB);
 
@@ -305,7 +307,7 @@ public class PurePursuitController extends Command implements RotationController
     }
 
     PathPoint getLastPoint() {
-        return path.points.get(path.points.size() - 1);
+        return path.getPoints().get(path.size() - 1);
     }
 
     /**
@@ -317,12 +319,12 @@ public class PurePursuitController extends Command implements RotationController
     boolean compareWithNextLine(Translation2d robotTranslation) {
         // Calculate the perpendicularIntersection of the next line in path, if it exists
         // Check if the line exists first
-        if (lastCrossedPointIndex + 2 < path.points.size()) {
+        if (lastCrossedPointIndex + 2 < path.size()) {
             //println("Next line found");
             // if the line exists, grab points
-            PathPoint pointA = path.points.get(lastCrossedPointIndex);
-            PathPoint pointB = path.points.get(lastCrossedPointIndex + 1);
-            PathPoint pointC = path.points.get(lastCrossedPointIndex + 2);
+            PathPoint pointA = path.get(lastCrossedPointIndex);
+            PathPoint pointB = path.get(lastCrossedPointIndex + 1);
+            PathPoint pointC = path.get(lastCrossedPointIndex + 2);
             // grab perpendicular intersection
             Translation2d perpendicularIntersectionBC = PathPoint.findPerpendicularIntersection(
                 pointB.getTranslation(), pointC.getTranslation(), robotTranslation
@@ -360,7 +362,7 @@ public class PurePursuitController extends Command implements RotationController
         for (int i = 0; i < 2; i++) {
             try {
                 packagedPoints.add(
-                    path.points.get(lastCrossedPointIndex + i)
+                    path.get(lastCrossedPointIndex + i)
                 );
             } catch (IndexOutOfBoundsException e) {
                 DriverStation.reportWarning("Could not grab point at index " + (lastCrossedPointIndex + i), e.getStackTrace());

@@ -4,14 +4,16 @@
 
 package frc.library.auto.pathing;
 
+import java.util.function.Supplier;
+
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
 
 public class SetDrivePosition extends Command {
   DriveSubsystem driveSubsystem;
-  Pose2d position;
+  Supplier<Pose2d> position;
   /** Creates a new SetDrivePosition. */
-  public SetDrivePosition(DriveSubsystem driveSubsystem, Pose2d position) {
+  public SetDrivePosition(DriveSubsystem driveSubsystem, Supplier<Pose2d> position) {
     this.driveSubsystem = driveSubsystem;
     this.position = position;
   }
@@ -23,7 +25,7 @@ public class SetDrivePosition extends Command {
   // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
-    driveSubsystem.setPosition(position);
+    driveSubsystem.setPosition(position.get());
   }
 
   // Called once the command ends or is interrupted.
