@@ -46,4 +46,11 @@ public class GameField  {
     public double getFieldLength() {
         return aprilTagFieldLayout.getFieldLength();
     }
+
+    /**
+     * @return This fields april tag field layout.
+     */
+    public AprilTagFieldLayout getAprilTagFieldLayout() {
+        return aprilTagFieldLayout;
+    }
 }
