@@ -7,8 +7,6 @@ package frc.library.auto.pathing;
 import java.util.ArrayList;
 
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.library.auto.pathing.controllers.RotationController;
@@ -103,7 +101,7 @@ public class FollowControllers extends Command {
    */
   public final void execute() {
     for (Command command : commands) {
-      command.execute();
+      if (!command.isFinished()) command.execute();
     }
     Pose2d poseSpeeds = new Pose2d(
       translationController.getTranslationSpeeds(driveSubsystem.getPosition()), 
@@ -111,7 +109,7 @@ public class FollowControllers extends Command {
     );
 
     driveSubsystem.drive(
-      new ChassisSpeeds(poseSpeeds.getX(), poseSpeeds.getY(), poseSpeeds.getRotation().getRadians())
+      poseSpeeds.getX(), poseSpeeds.getY(), poseSpeeds.getRotation().getRadians()
     );
   }
 

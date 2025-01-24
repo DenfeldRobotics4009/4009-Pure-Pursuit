@@ -4,19 +4,16 @@
 
 package frc.library.auto.pathing.pathObjects;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.PrintCommand;
+import frc.library.auto.pathing.field.GameField;
+import frc.library.auto.pathing.field.GameFieldPose;
 
 /**
  * A point along a Path
  */
-public class PathPoint {
-
-    public Translation2d posMeters;
-    public Rotation2d orientation; // Implemented by path constructor
+public class PathPoint extends GameFieldPose {
 
     public double speedMetersPerSecond; // Corrected by path constructor
 
@@ -24,48 +21,48 @@ public class PathPoint {
      * Constructs a new PathPoint with the given statistics. The
      * order of PathPoints constructed will define the order they
      * are driven by the robot.
-     * @param PosMeters Position of point on the field in meters
-     * @param Orientation The goal orientation of the robot when it reaches this point
-     * @param SpeedMetersPerSecond The speed the robot should travel THROUGH this point
+     * @param poseMeters Position of point on the field in meters
+     * @param orientation The goal orientation of the robot when it reaches this point
+     * @param speedMetersPerSecond The speed the robot should travel THROUGH this point
      */
-    public PathPoint(
-        Translation2d PosMeters,
-        Rotation2d Orientation,
-        double SpeedMetersPerSecond
-    ) {
-        posMeters = PosMeters;
-
-        // May be overridden
-        speedMetersPerSecond = SpeedMetersPerSecond;
-        orientation = Orientation;
+    public PathPoint(GameField field, Translation2d poseMeters, Rotation2d orientation, double speedMetersPerSecond) {
+        super(field, poseMeters, orientation);
+        this.speedMetersPerSecond = speedMetersPerSecond;
     }
+
     /**
-     * 
+     * Constructs a new PathPoint with the given statistics. The
+     * order of PathPoints constructed will define the order they
+     * are driven by the robot.
+     * @param posMeters Position of point on the field in meters
+     * @param speedMetersPerSecond The speed the robot should travel THROUGH this point
+     */
+    public PathPoint(GameField field, Pose2d poseMeters, double speedMetersPerSecond) {
+        this(field, poseMeters.getTranslation(), poseMeters.getRotation(), speedMetersPerSecond);
+    }
+
+    @Override
+    public PathPoint flipAllianceOrigin() {
+        return new PathPoint(getField(), super.flipAllianceOrigin(), speedMetersPerSecond);
+    }
+
+    @Override
+    public PathPoint rotateBy(Rotation2d other) {
+        return new PathPoint(getField(), super.rotateBy(other), speedMetersPerSecond);
+    }
+
+    /**
+     * Interpolates a value between initial and final.
      * @param Initial Initial Value
      * @param Final Final Value
      * @param PercentBetween Position (In Percent) along line starting from 0
-     * 
      * @return Calculated value between Initial and Final 
      * that is on the interpolated line function.
      */
-    public static double getAtLinearInterpolation(
+    public static double interpolate(
         double Initial, double Final, double PercentBetween
     ) {
         return (Final - Initial) * PercentBetween + Initial;
-    }
-
-    /**
-     * 
-     * @param Initial Initial Value
-     * @param Final Final Value
-     * @param Distance Distance between
-     * 
-     * @return Slope
-     */
-    public static double getSlopeOfLinearInterpolation(
-        double Initial, double Final, double Distance
-    ) {
-        return (Final - Initial) / Distance;
     }
     
     /**
@@ -120,24 +117,6 @@ public class PathPoint {
         return clamp(pointA, pointB, intersection);
     }
 
-    public double getDistance(PathPoint Point) {
-        return posMeters.getDistance(Point.posMeters);
-    }
-
-    /**
-     * Clamps an input translation2d into the boundaries specified by the corners
-     * @param cornerA
-     * @param cornerB
-     * @param Input
-     * @return Translation2d within boundaries of corner A and B
-     */
-    public static Translation2d clamp(Translation2d cornerA, Translation2d cornerB, Translation2d Input) {
-        return new Translation2d(
-            nonSpecifiedClamp(cornerA.getX(), cornerB.getX(), Input.getX()),
-            nonSpecifiedClamp(cornerA.getY(), cornerB.getY(), Input.getY())
-        );
-    }
-
     /**
      * Constructs a new pathPathPoint via
      * interpolating values from this to
@@ -148,14 +127,24 @@ public class PathPoint {
      */
     public PathPoint interpolate(PathPoint finalPoint, double t) {
         return new PathPoint(
+            getField(),
             // Position
-            posMeters.interpolate(finalPoint.posMeters, t), 
+            getTranslation().interpolate(finalPoint.getTranslation(), t), 
             // Rotation
-            orientation.interpolate(finalPoint.orientation, t),
+            getRotation().interpolate(finalPoint.getRotation(), t),
             // Speed (Unadjusted)
-            getAtLinearInterpolation(
+            interpolate(
                 speedMetersPerSecond, finalPoint.speedMetersPerSecond, t)
         );
+    }
+
+    /**
+     * Gets the distance to the other path point.
+     * @param pathPoint
+     * @return The distance from this path point to the other.
+     */
+    public double getDistance(Pose2d pathPoint) {
+        return getTranslation().getDistance(pathPoint.getTranslation());
     }
 
     /**
