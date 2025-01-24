@@ -1,15 +1,19 @@
 package frc.library.auto.pathing.field;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.util.ArrayList;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
-import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.Trajectory.State;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.library.auto.pathing.pathObjects.Path;
 
-public class GameField  {
-    AprilTagFieldLayout aprilTagFieldLayout;
+public class GameField extends AprilTagFieldLayout {
     FieldMirrorType fieldMirrorType;
+    Field2d fieldWidget = new Field2d();
     /**
      * Creates a GameField object that describes the game field.
      * @param widthMeters Distance in meters from the blue coordinate origin X value (0) 
@@ -20,37 +24,45 @@ public class GameField  {
      * across the centerline.
      * @throws IOException 
      */
-    public GameField(AprilTagFields fieldLayoutResource, FieldMirrorType fieldMirrorType) throws IOException {
-        this.aprilTagFieldLayout = fieldLayoutResource.loadAprilTagLayoutField();
+    public GameField(AprilTagFieldLayout aprilTagFieldLayout, FieldMirrorType fieldMirrorType) throws IOException {
+        // Copy the given layout, this is the closest wpi gives to a copy constructor.
+        super(aprilTagFieldLayout.getTags(), aprilTagFieldLayout.getFieldLength(), aprilTagFieldLayout.getFieldWidth());
         this.fieldMirrorType = fieldMirrorType;
+        SmartDashboard.putData("Field", fieldWidget);
     }
 
+    /**
+     * @return The method the field is flipped/rotated between the blue and red alliances.
+     */
     public FieldMirrorType getFieldMirrorType() {
         return fieldMirrorType;
     }
-    
+
     /**
-     * Returns the length of the field the layout is representing in meters.
-     *
-     * @return width, in meters
+     * Sets the position of the robot in the field widget.
+     * @param position
      */
-    public double getFieldWidth() {
-        return aprilTagFieldLayout.getFieldWidth();
+    public void setRobotPose(Pose2d position) {
+        fieldWidget.setRobotPose(position);
     }
 
     /**
-     * Returns the length of the field the layout is representing in meters.
-     *
-     * @return length, in meters
+     * @return smartdashboard.Field2d widget of this game field.
      */
-    public double getFieldLength() {
-        return aprilTagFieldLayout.getFieldLength();
+    public Field2d getField2d() {
+        return fieldWidget;
     }
 
     /**
-     * @return This fields april tag field layout.
+     * Draws the path on the field widget.
+     * @param name Name of the object drawing.
+     * @param path Path to draw.
      */
-    public AprilTagFieldLayout getAprilTagFieldLayout() {
-        return aprilTagFieldLayout;
+    public void drawPath(String name, Path path) {
+        ArrayList<State> pointsAsStates = new ArrayList<State>();
+        for (Pose2d point : path.getPose2ds()) {
+            pointsAsStates.add(new State(0, 0, 0, point, 0));
+        }
+        fieldWidget.getObject(name).setTrajectory(new Trajectory(pointsAsStates));
     }
 }

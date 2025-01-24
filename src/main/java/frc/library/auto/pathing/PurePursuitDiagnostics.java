@@ -33,8 +33,6 @@ public class PurePursuitDiagnostics {
     DoublePublisher percentAlongLine;
     DoublePublisher lookAhead;
 
-    public static Field2d field = new Field2d();
-
     public PurePursuitDiagnostics(Path path) {
         NetworkTable purePursuitTable = NetworkTableInstance.getDefault().getTable("PurePursuit");
         goalX = purePursuitTable.getDoubleTopic("goalX").getEntry(0);
@@ -52,17 +50,8 @@ public class PurePursuitDiagnostics {
         percentAlongLine = purePursuitTable.getDoubleTopic("percentAlongLine").getEntry(0);
         lookAhead = purePursuitTable.getDoubleTopic("lookAhead").getEntry(0);
 
-        SmartDashboard.putData("Field", field);
-
         if (path.isValid()) {
-            ArrayList<State> pointsAsStates = new ArrayList<State>();
-            for (Pose2d point : path.getPose2ds()) {
-                pointsAsStates.add(new State(0, 0, 0, point, 0));
-            }
-
-            field.getObject("Path Trajectory").setTrajectory(
-                new Trajectory(pointsAsStates)
-            );
+            path.config.field.drawPath("Path", path);
         }
     }
 
@@ -88,7 +77,5 @@ public class PurePursuitDiagnostics {
         distanceToGoal.set(goalPosition.getTranslation().getDistance(currentPosition.getTranslation()));
         this.percentAlongLine.set(percentAlongLine);
         this.lookAhead.set(lookAhead);
-
-        field.setRobotPose(currentPosition);
     }
 }

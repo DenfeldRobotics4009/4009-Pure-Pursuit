@@ -55,7 +55,7 @@ public class RobotContainer {
 
     GameField gameField = null;
     try {
-      gameField = new GameField(AprilTagFields.k2023ChargedUp, FieldMirrorType.Mirrored);
+      gameField = new GameField(AprilTagFields.k2023ChargedUp.loadAprilTagLayoutField(), FieldMirrorType.Mirrored);
     } catch (IOException e) {
       // AprilTagFields file not found
       e.printStackTrace();
@@ -66,12 +66,12 @@ public class RobotContainer {
       .setDistanceToGoalTolerance(0.1)
       .setDefaultEndpointTolerance(0.1);
 
-    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(config, Alliance.Blue, "7PieceFirstNote"));
+    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(config, Alliance.Blue, "ExamplePathInitial"));
     SequentialCommandGroup autoCommand = new SequentialCommandGroup(
       new SetDrivePosition(drivetrain, pathA.getPath().getStartingPoseSupplier()),
       new FollowControllers(pathA, drivetrain),
       new PrintCommand("Staging second path"),
-      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(config, Alliance.Blue, "7PieceSecondNote")), drivetrain)
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(config, Alliance.Blue, "ExamplePathFinal")), drivetrain)
     );
 
     autoChooser.addOption("Example Auto", autoCommand);

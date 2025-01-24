@@ -370,14 +370,17 @@ public class PurePursuitController extends Command implements RotationController
 
     @Override
     public Translation2d getTranslationSpeeds(Pose2d robotPosition) {
+        // Update the field widget in the path with the robots position
+        path.getField().setRobotPose(robotPosition);
         ChassisSpeeds speeds = getSpeeds(robotPosition);
         return new Translation2d(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond);
     }
 
     @Override
     public Rotation2d getRotationSpeeds(Pose2d robotPosition) {
-        ChassisSpeeds speeds = getSpeeds(robotPosition);
-        return Rotation2d.fromRadians(speeds.omegaRadiansPerSecond);
+        // Update the field widget in the path with the robots position
+        path.getField().setRobotPose(robotPosition);
+        return Rotation2d.fromRadians(getSpeeds(robotPosition).omegaRadiansPerSecond);
     }
 
     public Path getPath() {
