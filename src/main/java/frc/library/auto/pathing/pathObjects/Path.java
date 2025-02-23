@@ -12,6 +12,8 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.function.Supplier;
 
+import org.json.simple.parser.ParseException;
+
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -30,6 +32,8 @@ import frc.library.auto.pathing.field.GameField;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.trajectory.PathPlannerTrajectory;
+import com.pathplanner.lib.trajectory.PathPlannerTrajectoryState;
+import com.pathplanner.lib.util.FileVersionException;
 
 public class Path implements Iterable<PathPoint> {
 
@@ -56,14 +60,21 @@ public class Path implements Iterable<PathPoint> {
      * @return A new path that matches the path planner path.
      */
     public static Path getFromPathPlanner(PurePursuitSettings config, Alliance originAlliance, String pathName) {
-        PathPlannerPath pathPlannerPath = PathPlannerPath.fromPathFile(pathName);
+        PathPlannerPath pathPlannerPath;
+        try {
+            pathPlannerPath = PathPlannerPath.fromPathFile(pathName);
+        } catch (FileVersionException | IOException | ParseException e) {
+            e.printStackTrace();
+            System.out.println("Failed to open path " + pathName);
+            return null;
+        }
         
         ArrayList<PathPoint> pathPoints = new ArrayList<PathPoint>();
         for (com.pathplanner.lib.path.PathPoint pathPoint : pathPlannerPath.getAllPathPoints()) {
             pathPoints.add(new PathPoint(config.field, new Pose2d(pathPoint.position, pathPoint.rotationTarget.rotation()), pathPoint.maxV));
         }
 
-        return new Path(config, originAlliance, pathPoints.toArray());
+        return new Path(config, originAlliance, pathPoints.toArray(new PathPoint[pathPoints.size()]));
     }
 
     /**
@@ -175,10 +186,11 @@ public class Path implements Iterable<PathPoint> {
      * @param lastPointTolerance The distance to the last point where the path ends.
      * @param pathPlannerTrajectory The PathPlanner trajectory.
      */
+    @Deprecated
     public Path(PurePursuitSettings config, Alliance originAlliance, double lastPointTolerance, PathPlannerTrajectory pathPlannerTrajectory) {
         ArrayList<PathPoint> tempPoints = new ArrayList<PathPoint>();
-        for (com.pathplanner.lib.path.PathPlannerTrajectory.State state : pathPlannerTrajectory.getStates()) {
-            tempPoints.add(new PathPoint(config.field, state.positionMeters, state.targetHolonomicRotation, state.velocityMps));
+        for (PathPlannerTrajectoryState state : pathPlannerTrajectory.getStates()) {
+            tempPoints.add(new PathPoint(config.field, state.pose, state.linearVelocity));
         }
         processPoints(config, originAlliance, lastPointTolerance, tempPoints);
     }
