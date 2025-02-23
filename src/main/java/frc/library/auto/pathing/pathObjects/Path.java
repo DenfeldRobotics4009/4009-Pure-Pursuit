@@ -10,12 +10,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.function.Supplier;
 
 import org.json.simple.parser.ParseException;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.Trajectory.State;
@@ -70,9 +72,48 @@ public class Path implements Iterable<PathPoint> {
         }
         
         ArrayList<PathPoint> pathPoints = new ArrayList<PathPoint>();
-        for (com.pathplanner.lib.path.PathPoint pathPoint : pathPlannerPath.getAllPathPoints()) {
-            pathPoints.add(new PathPoint(config.field, new Pose2d(pathPoint.position, pathPoint.rotationTarget.rotation()), pathPoint.maxV));
+
+        // pathPlannerPathPoint.rotationTarget is sometimes null, this block of code is correcting that
+        // by interpolating between KNOWN rotation values, and overriding the null ones before pathPoints are constructed.
+        
+        com.pathplanner.lib.path.PathPoint initialPoint = pathPlannerPath.getPoint(0);
+        Rotation2d initialHeading = pathPlannerPath.getInitialHeading();
+        // The position of points that still need rotation patching
+        
+        int patchedIndex = 0;
+        List<com.pathplanner.lib.path.PathPoint> pathPlannerPathPoints = pathPlannerPath.getAllPathPoints();
+        for (int foundTargetIndex = 0; foundTargetIndex < pathPlannerPathPoints.size(); foundTargetIndex++) {
+            // Loop until rotation is found
+            if (pathPlannerPathPoints.get(foundTargetIndex).rotationTarget != null) {
+                com.pathplanner.lib.path.PathPoint finalPoint = pathPlannerPathPoints.get(foundTargetIndex);
+                Rotation2d finalHeading = finalPoint.rotationTarget.rotation();
+                
+                // Iterate from the position of points that still need patching, up to the index of the found rotation target.
+                for (int pointIndex = patchedIndex; pointIndex <= foundTargetIndex; pointIndex++) {
+                    com.pathplanner.lib.path.PathPoint currentPathPlannerPoint = pathPlannerPathPoints.get(pointIndex);
+
+                    // Interpolate from initialHeader to finalHeading
+                    Rotation2d rotation = initialHeading.interpolate(finalHeading, 
+                        // FInd percent from initial to final point
+                        (currentPathPlannerPoint.distanceAlongPath - initialPoint.distanceAlongPath) / 
+                        (finalPoint.distanceAlongPath - initialPoint.distanceAlongPath)
+                    );
+
+                    pathPoints.add(
+                        new PathPoint(config.field, currentPathPlannerPoint.position, rotation, currentPathPlannerPoint.maxV)
+                    );
+                }
+
+                // Increment points and headings, and set patchedIndex to the next point
+                initialPoint = finalPoint;
+                initialHeading = finalHeading;
+                patchedIndex = foundTargetIndex + 1;
+            }
+
+
         }
+
+        System.out.println(pathPoints.toString());
 
         return new Path(config, originAlliance, pathPoints.toArray(new PathPoint[pathPoints.size()]));
     }
