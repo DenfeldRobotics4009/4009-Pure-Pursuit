@@ -6,15 +6,31 @@ package frc.robot;
 
 import frc.library.auto.pathing.FollowControllers;
 import frc.library.auto.pathing.PurePursuitController;
+import frc.library.auto.pathing.PurePursuitSettings;
+import frc.library.auto.pathing.SetDrivePosition;
+import frc.library.auto.pathing.field.FieldMirrorType;
+import frc.library.auto.pathing.field.GameField;
 import frc.library.auto.pathing.pathObjects.Path;
-import frc.library.auto.pathing.pathObjects.PathPoint;
 import frc.robot.commands.Drive;
 import frc.robot.subsystems.Drivetrain;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
+
+import java.io.IOException;
+import java.util.EnumSet;
+
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.PathPlannerTrajectory;
+
+import edu.wpi.first.apriltag.AprilTag;
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.networktables.NetworkTableEvent;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.RepeatCommand;
+import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -29,13 +45,37 @@ public class RobotContainer {
 
   Drivetrain drivetrain = Drivetrain.getInstance();
 
+  SendableChooser<SequentialCommandGroup> autoChooser = new SendableChooser<SequentialCommandGroup>();
+
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
     // Configure the trigger bindings
     configureBindings();
     drivetrain.setDefaultCommand(new Drive(drivetrain));
 
-    PurePursuitController.setLookAheadScalar(1);
+    GameField gameField = null;
+    try {
+      gameField = new GameField(AprilTagFields.k2023ChargedUp.loadAprilTagLayoutField(), FieldMirrorType.Mirrored);
+    } catch (IOException e) {
+      // AprilTagFields file not found
+      e.printStackTrace();
+    }
+
+    PurePursuitSettings config = new PurePursuitSettings(gameField, Alliance.Blue)
+      .setLookAheadScalar(0.2)
+      .setDistanceToGoalTolerance(0.1)
+      .setDefaultEndpointTolerance(0.1);
+
+    PurePursuitController pathA = new PurePursuitController(Path.getFromPathPlanner(config, Alliance.Blue, "ExamplePathInitial"));
+    SequentialCommandGroup autoCommand = new SequentialCommandGroup(
+      new SetDrivePosition(drivetrain, pathA.getPath().getStartingPoseSupplier()),
+      new FollowControllers(pathA, drivetrain),
+      new PrintCommand("Staging second path"),
+      new FollowControllers(new PurePursuitController(Path.getFromPathPlanner(config, Alliance.Blue, "ExamplePathFinal")), drivetrain)
+    );
+
+    autoChooser.addOption("Example Auto", autoCommand);
+    SmartDashboard.putData(autoChooser);
   }
 
   /**
@@ -58,70 +98,6 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return new RepeatCommand(
-      new SequentialCommandGroup(
-        new FollowControllers(
-          new PurePursuitController(
-            new PathPoint(
-              new Translation2d(1, 1),
-              new Rotation2d(),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(3, 2),
-              new Rotation2d(),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(5, 1),
-              new Rotation2d(),
-              5
-            ),
-            new PathPoint(
-              new Translation2d(8, 2),
-              Rotation2d.fromDegrees(180),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(10, 1),
-              Rotation2d.fromDegrees(180),
-              0
-            )
-          ), 
-          drivetrain
-        ),
-
-        new FollowControllers(
-          new PurePursuitController(
-            new PathPoint(
-              new Translation2d(10, 1),
-              Rotation2d.fromDegrees(180),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(8, 2),
-              Rotation2d.fromDegrees(180),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(5, 1),
-              new Rotation2d(),
-              5
-            ),
-            new PathPoint(
-              new Translation2d(3, 2),
-              new Rotation2d(),
-              4
-            ),
-            new PathPoint(
-              new Translation2d(1, 1),
-              new Rotation2d(),
-              0
-            )
-          ), 
-          drivetrain
-        )
-      )
-    );
+    return autoChooser.getSelected();
   }
 }

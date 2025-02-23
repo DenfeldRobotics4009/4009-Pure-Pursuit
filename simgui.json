@@ -10,10 +10,29 @@
     "types": {
       "/FMSInfo": "FMSInfo",
       "/Shuffleboard/Autonomous/Autonomous": "String Chooser",
-      "/SmartDashboard/Field": "Field2d"
+      "/SmartDashboard/Field": "Field2d",
+      "/SmartDashboard/SendableChooser[0]": "String Chooser"
     },
     "windows": {
       "/SmartDashboard/Field": {
+        "Path Trajectory": {
+          "arrowSize": 0,
+          "arrows": false,
+          "style": "Line",
+          "weight": 1.0
+        },
+        "bottom": 1476,
+        "height": 8.210550308227539,
+        "image": "C:\\Users\\cwedi\\Downloads\\247f4627b31254ecef02083fa886fe8723be2a83.png",
+        "left": 150,
+        "right": 2961,
+        "top": 79,
+        "width": 16.541748046875,
+        "window": {
+          "visible": true
+        }
+      },
+      "/SmartDashboard/SendableChooser[0]": {
         "window": {
           "visible": true
         }
@@ -21,33 +40,52 @@
     }
   },
   "NetworkTables": {
+    "Retained Values": {
+      "open": false
+    },
+    "properties": true,
     "retained": {
+      "$sub$": {
+        "open": true
+      },
       "Shuffleboard": {
         "open": true
       }
     },
+    "special": true,
     "transitory": {
       "FMSInfo": {
         "open": true
       },
+      "LiveWindow": {
+        ".status": {
+          "open": true
+        },
+        "open": true
+      },
       "PurePursuit": {
+        "open": true
+      },
+      "Shuffleboard": {
+        "open": true
+      },
+      "SmartDashboard": {
+        "SendableChooser[0]": {
+          "string[]##v_/SmartDashboard/SendableChooser[0]/options": {
+            "open": true
+          }
+        },
         "open": true
       }
     }
   },
   "NetworkTables Info": {
-    "Clients": {
-      "open": true
-    },
-    "Connections": {
-      "open": true
-    },
     "Server": {
       "Publishers": {
         "open": true
-      },
-      "open": true
-    }
+      }
+    },
+    "visible": true
   },
   "Plot": {
     "Plot <0>": {
@@ -172,7 +210,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 307,
           "series": [
             {
               "color": [
@@ -201,7 +239,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 307,
           "series": [
             {
               "color": [
@@ -221,7 +259,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 307,
           "series": [
             {
               "color": [
@@ -257,7 +295,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 307,
           "series": [
             {
               "color": [
@@ -286,7 +324,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 307,
           "series": [
             {
               "color": [
@@ -315,7 +353,7 @@
             0.0,
             0.8500000238418579
           ],
-          "height": 293,
+          "height": 307,
           "series": [
             {
               "color": [

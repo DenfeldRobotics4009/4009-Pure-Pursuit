@@ -14,12 +14,14 @@ import edu.wpi.first.wpilibj2.command.Subsystem;
  * by the user.
  */
 public interface DriveSubsystem extends Subsystem {
+    
     /**
-     * Drives the robot at the given field
-     * oriented direction
-     * @param speeds units in meters/sec and rad/sec
+     * Drives the robot at the given field oriented direction.
+     * @param xMetersPerSecond Meters per second in the positive x direction. (To the left of the driver)
+     * @param yMetersPerSecond Meters per second in the positive y direction. (Downfield)
+     * @param radPerSecond Turning radians per second.
      */
-    void drive(ChassisSpeeds speeds);
+    void drive(double xMetersPerSecond, double yMetersPerSecond, double radPerSecond);
 
     /**
      * @return the current most accurate field
